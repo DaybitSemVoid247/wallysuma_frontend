@@ -53,7 +53,7 @@ export default function InicioSesionUsuarios() {
     <div
       className="w-full h-screen flex items-center justify-center p-6 overflow-hidden bg-cover bg-center bg-no-repeat"
       style={{
-        backgroundImage: "url('/public/Diseño sin título.jpg')",
+        backgroundImage: "url('/public/wallysuma.png')",
         backgroundColor: "#f0f9ff",
       }}
     >

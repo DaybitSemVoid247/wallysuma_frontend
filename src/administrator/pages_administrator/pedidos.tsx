@@ -12,24 +12,31 @@ export const Pedidos = () => {
   const productos: Producto[] = [
     {
       id: 1,
-      nombre: "Camisa Formal",
-      categoria: "Camisas",
-      precio: 120.0,
-      talla: "M",
+      nombre: "Sajta",
+      categoria: "Almuerzo",
+      precio: 59.0,
+      talla: "12",
     },
     {
       id: 2,
-      nombre: "Pantalón Jean",
-      categoria: "Pantalones",
-      precio: 180.0,
+      nombre: "Pastel de Chocolate",
+      categoria: "Postres",
+      precio: 35.0,
       talla: "32",
     },
     {
       id: 3,
-      nombre: "Vestido Casual",
-      categoria: "Vestidos",
-      precio: 250.0,
-      talla: "S",
+      nombre: "Bebida Efervescente de Chilto",
+      categoria: "Bebidas",
+      precio: 15.0,
+      talla: "15",
+    },
+    {
+      id: 4,
+      nombre: "Salteña con Cafe",
+      categoria: "Desayuno",
+      precio: 15.0,
+      talla: "15",
     },
   ];
 
@@ -55,8 +62,8 @@ export const Pedidos = () => {
             onClick={() => setCategoriaSeleccionada(categoria)}
             className={`px-4 py-2 rounded-lg font-medium ${
               categoriaSeleccionada === categoria
-                ? "bg-cyan-600 text-white"
-                : "bg-slate-200 text-slate-700 hover:bg-slate-300"
+                ? "bg-[#d88c6f] text-white"
+                : "bg-[#dbbdb1] text-white hover:bg-slate-300"
             }`}
           >
             {categoria}
@@ -77,14 +84,14 @@ export const Pedidos = () => {
             </div>
 
             <p className="text-slate-600 text-sm mb-4">
-              Talla: {producto.talla}
+              Cantidad: {producto.talla}
             </p>
 
             <div className="flex justify-between items-center">
-              <span className="text-2xl font-bold text-cyan-600">
+              <span className="text-2xl font-bold text-[#f88358]">
                 Bs. {producto.precio.toFixed(2)}
               </span>
-              <button className="bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700">
+              <button className="bg-[#d88c6f] text-white px-4 py-2 rounded-lg hover:bg-[#9e4e2f]">
                 Comprar
               </button>
             </div>

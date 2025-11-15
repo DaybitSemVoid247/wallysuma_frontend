@@ -27,7 +27,7 @@ export const Navbar = () => {
   };
 
   return (
-    <header className="bg-white text-black py-4 flex items-center justify-between px-5 border-b border-slate-200 lg:px-12">
+    <header className="bg-[#e8dfd5] text-black py-4 flex items-center justify-between px-5 border-b border-slate-200 lg:px-12">
       <Logo />
       <nav className="space-x-5 hidden md:flex">
         {navbarLinks.map((link) => (
@@ -36,8 +36,8 @@ export const Navbar = () => {
             to={link.href}
             className={({ isActive }) =>
               `${
-                isActive ? "text-cyan-600 underline" : ""
-              } transition-all duration-300 font-medium hover:text-cyan-600 hover:underline `
+                isActive ? "text-[#9e4e2f] underline" : ""
+              } transition-all duration-300 font-medium hover:text-[#9e4e2f] hover:underline `
             }
           >
             {link.title}
@@ -77,12 +77,12 @@ export const Navbar = () => {
           </div>
         )}
 
-        <button className="relative">
+        {/*<button className="relative">
           <span className="absolute -bottom-2 -right-2 w-5 h-5 grid place-items-center bg-black text-white text-xs rounded-full">
             0
           </span>
           <HiOutlineShoppingBag size={25} />
-        </button>
+        </button>*/}
       </div>
       <button className="md:hidden">
         <FaBarsStaggered size={25} />

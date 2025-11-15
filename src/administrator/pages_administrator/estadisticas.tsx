@@ -12,24 +12,24 @@ export const Estadisticas = () => {
   const [productos] = useState<Producto[]>([
     {
       id: 1,
-      nombre: "Camisa Formal",
-      categoria: "Camisas",
-      precio: 120.0,
-      vendidos: 15,
+      nombre: "Sopa del Día",
+      categoria: "Entradas",
+      precio: 35.0,
+      vendidos: 40,
     },
     {
       id: 2,
-      nombre: "Pantalón Jean",
-      categoria: "Pantalones",
-      precio: 180.0,
-      vendidos: 22,
+      nombre: "Pasta Alfredo",
+      categoria: "Platos Fuertes",
+      precio: 85.0,
+      vendidos: 28,
     },
     {
       id: 3,
-      nombre: "Vestido Casual",
-      categoria: "Vestidos",
-      precio: 250.0,
-      vendidos: 8,
+      nombre: "Ensalada César",
+      categoria: "Ensaladas",
+      precio: 60.0,
+      vendidos: 33,
     },
   ]);
 

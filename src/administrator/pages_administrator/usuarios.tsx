@@ -166,7 +166,7 @@ export const UsuariosTable = () => {
         <h2 className="text-2xl font-bold">Usuarios</h2>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded hover:bg-cyan-700"
+          className="flex items-center gap-2 bg-[#d88c6f] text-white px-4 py-2 rounded hover:bg-[#9e4e2f]"
         >
           <HiOutlinePlus size={18} />
           Agregar
@@ -308,7 +308,7 @@ export const UsuariosTable = () => {
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 px-3 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700"
+                className="flex-1 px-3 py-2 bg-[#d88c6f] text-white rounded hover:bg-[#9e4e2f]"
               >
                 Guardar
               </button>

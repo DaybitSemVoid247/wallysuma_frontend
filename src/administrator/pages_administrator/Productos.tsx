@@ -11,7 +11,6 @@ interface Producto {
   nombre: string;
   categoria: string;
   precio: number;
-  talla: string;
   stock: number;
 }
 
@@ -19,67 +18,59 @@ export const Productos = () => {
   const [productos, setProductos] = useState<Producto[]>([
     {
       id: 1,
-      nombre: "Camisa Formal",
-      categoria: "Camisas",
-      precio: 120.0,
-      talla: "M",
-      stock: 15,
+      nombre: "Hamburguesa Clásica",
+      categoria: "Platos Principales",
+      precio: 35.0,
+      stock: 50,
     },
     {
       id: 2,
-      nombre: "Pantalón Jean",
-      categoria: "Pantalones",
-      precio: 180.0,
-      talla: "32",
-      stock: 22,
+      nombre: "Pizza Margarita",
+      categoria: "Platos Principales",
+      precio: 45.0,
+      stock: 30,
     },
     {
       id: 3,
-      nombre: "Vestido Casual",
-      categoria: "Vestidos",
-      precio: 250.0,
-      talla: "S",
-      stock: 8,
+      nombre: "Ensalada César",
+      categoria: "Ensaladas",
+      precio: 25.0,
+      stock: 40,
     },
     {
       id: 4,
-      nombre: "Chaqueta Deportiva",
-      categoria: "Abrigos",
-      precio: 320.0,
-      talla: "L",
-      stock: 12,
+      nombre: "Pasta Carbonara",
+      categoria: "Platos Principales",
+      precio: 42.0,
+      stock: 35,
     },
     {
       id: 5,
-      nombre: "Falda Plisada",
-      categoria: "Faldas",
-      precio: 95.0,
-      talla: "M",
-      stock: 18,
+      nombre: "Limonada Natural",
+      categoria: "Bebidas",
+      precio: 12.0,
+      stock: 100,
     },
     {
       id: 6,
-      nombre: "Camisa Casual",
-      categoria: "Camisas",
-      precio: 85.0,
-      talla: "S",
-      stock: 25,
+      nombre: "Café Americano",
+      categoria: "Bebidas",
+      precio: 10.0,
+      stock: 80,
     },
     {
       id: 7,
-      nombre: "Pantalón Formal",
-      categoria: "Pantalones",
-      precio: 220.0,
-      talla: "34",
-      stock: 10,
+      nombre: "Cheesecake",
+      categoria: "Postres",
+      precio: 28.0,
+      stock: 20,
     },
     {
       id: 8,
-      nombre: "Vestido Elegante",
-      categoria: "Vestidos",
-      precio: 380.0,
-      talla: "M",
-      stock: 5,
+      nombre: "Brownie con Helado",
+      categoria: "Postres",
+      precio: 22.0,
+      stock: 25,
     },
   ]);
 
@@ -89,7 +80,6 @@ export const Productos = () => {
     nombre: "",
     categoria: "",
     precio: "",
-    talla: "",
     stock: "",
   });
 
@@ -101,7 +91,7 @@ export const Productos = () => {
 
   const handleAdd = () => {
     setEditingId(null);
-    setForm({ nombre: "", categoria: "", precio: "", talla: "", stock: "" });
+    setForm({ nombre: "", categoria: "", precio: "", stock: "" });
     setShowModal(true);
   };
 
@@ -111,7 +101,6 @@ export const Productos = () => {
       nombre: producto.nombre,
       categoria: producto.categoria,
       precio: producto.precio.toString(),
-      talla: producto.talla,
       stock: producto.stock.toString(),
     });
     setShowModal(true);
@@ -122,20 +111,12 @@ export const Productos = () => {
   };
 
   const handleSave = () => {
-    if (
-      !form.nombre ||
-      !form.categoria ||
-      !form.precio ||
-      !form.talla ||
-      !form.stock
-    )
-      return;
+    if (!form.nombre || !form.categoria || !form.precio || !form.stock) return;
 
     const productoData = {
       nombre: form.nombre,
       categoria: form.categoria,
       precio: parseFloat(form.precio),
-      talla: form.talla,
       stock: parseInt(form.stock),
     };
 
@@ -182,11 +163,11 @@ export const Productos = () => {
     <div className="p-6">
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">
-          Inventario de Ropa
+          Inventario de Restaurante
         </h2>
         <button
           onClick={handleAdd}
-          className="flex items-center gap-2 bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition"
+          className="flex items-center gap-2 bg-[#d88c6f] text-white px-4 py-2 rounded-lg hover:bg-[#9e4e2f] transition"
         >
           <HiOutlinePlus size={18} />
           Agregar Producto
@@ -207,7 +188,7 @@ export const Productos = () => {
               placeholder="Buscar por nombre..."
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:bg-white"
             />
           </div>
 
@@ -218,11 +199,11 @@ export const Productos = () => {
             className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
           >
             <option value="">Todas las categorías</option>
-            <option value="Camisas">Camisas</option>
-            <option value="Pantalones">Pantalones</option>
-            <option value="Vestidos">Vestidos</option>
-            <option value="Abrigos">Abrigos</option>
-            <option value="Faldas">Faldas</option>
+            <option value="Platos Principales">Platos Principales</option>
+            <option value="Entradas">Entradas</option>
+            <option value="Ensaladas">Ensaladas</option>
+            <option value="Bebidas">Bebidas</option>
+            <option value="Postres">Postres</option>
           </select>
         </div>
 
@@ -240,7 +221,6 @@ export const Productos = () => {
             <tr>
               <th className="px-6 py-3">Nombre</th>
               <th className="px-6 py-3">Categoría</th>
-              <th className="px-6 py-3">Talla</th>
               <th className="px-6 py-3">Precio</th>
               <th className="px-6 py-3">Stock</th>
               <th className="px-6 py-3 text-center">Acciones</th>
@@ -259,7 +239,6 @@ export const Productos = () => {
                       {producto.categoria}
                     </span>
                   </td>
-                  <td className="px-6 py-3">{producto.talla}</td>
                   <td className="px-6 py-3 font-semibold">
                     Bs. {producto.precio.toFixed(2)}
                   </td>
@@ -285,7 +264,7 @@ export const Productos = () => {
             ) : (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={5}
                   className="px-6 py-8 text-center text-slate-500"
                 >
                   No se encontraron productos
@@ -314,7 +293,7 @@ export const Productos = () => {
                 onClick={() => setCurrentPage(page)}
                 className={`px-4 py-2 rounded-lg transition ${
                   currentPage === page
-                    ? "bg-cyan-600 text-white"
+                    ? "bg-[#d88c6f] text-white"
                     : "border border-slate-300 hover:bg-slate-100 bg-white"
                 }`}
               >
@@ -357,7 +336,7 @@ export const Productos = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej: Camisa Formal"
+                  placeholder="Ej: Hamburguesa Clásica"
                   value={form.nombre}
                   onChange={(e) => setForm({ ...form, nombre: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white"
@@ -376,25 +355,12 @@ export const Productos = () => {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white"
                 >
                   <option value="">Seleccionar categoría</option>
-                  <option value="Camisas">Camisas</option>
-                  <option value="Pantalones">Pantalones</option>
-                  <option value="Vestidos">Vestidos</option>
-                  <option value="Abrigos">Abrigos</option>
-                  <option value="Faldas">Faldas</option>
+                  <option value="Platos Principales">Platos Principales</option>
+                  <option value="Entradas">Entradas</option>
+                  <option value="Ensaladas">Ensaladas</option>
+                  <option value="Bebidas">Bebidas</option>
+                  <option value="Postres">Postres</option>
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Talla
-                </label>
-                <input
-                  type="text"
-                  placeholder="S, M, L, XL..."
-                  value={form.talla}
-                  onChange={(e) => setForm({ ...form, talla: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white"
-                />
               </div>
 
               <div>
@@ -434,7 +400,7 @@ export const Productos = () => {
               </button>
               <button
                 onClick={handleSave}
-                className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition font-medium"
+                className="flex-1 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-[#9e4e2f] transition font-medium"
               >
                 Guardar
               </button>

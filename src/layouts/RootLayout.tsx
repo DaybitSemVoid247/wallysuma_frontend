@@ -7,7 +7,7 @@ export const RootLayout = () => {
     <>
       <div className="h-screen flex flex-col">
         <Navbar />
-        <main className="flex-1 overflow-y-auto p-5">
+        <main className="flex-1 overflow-y-auto p-5 bg-[#f6f1eb]">
           <Outlet />
         </main>
         <Footer />
