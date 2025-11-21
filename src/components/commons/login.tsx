@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdOutlineMailOutline } from "react-icons/md";
 import { RiLockPasswordLine } from "react-icons/ri";
+import axios from "axios";
 
 export default function InicioSesionUsuarios() {
   const navigate = useNavigate();
@@ -17,36 +18,41 @@ export default function InicioSesionUsuarios() {
     };
   }, []);
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
-
-    const usuariosGuardados = localStorage.getItem("usuarios");
-    const usuarios = usuariosGuardados ? JSON.parse(usuariosGuardados) : [];
-
-    const usuarioEncontrado = usuarios.find(
-      (user: any) => user.email === correo
-    );
-
-    if (!usuarioEncontrado) {
-      setError("Correo no registrado");
-      setLoading(false);
-      return;
-    }
-
-    if (usuarioEncontrado.contraseña !== contrasena) {
-      setError("Contraseña incorrecta");
-      setLoading(false);
-      return;
-    }
-
     setError("");
-    localStorage.setItem("usuarioActual", JSON.stringify(usuarioEncontrado));
 
-    setTimeout(() => {
+    try {
+      const response = await axios.post("http://localhost:3000/auth/login", {
+        correo,
+        contrasena,
+      });
+
+      const { usuario, token } = response.data;
+
+      localStorage.setItem("token", token);
+      localStorage.setItem("usuarioActual", JSON.stringify(usuario));
+
+      if (usuario.roles.includes("Administrador")) {
+        navigate("/administrator/usuarios");
+      } else if (usuario.roles.includes("Usuario")) {
+        navigate("/articulos");
+      } else if (usuario.roles.includes("Cocinero")) {
+        navigate("/pedidos");
+      } else {
+        navigate("/");
+      }
+    } catch (err: any) {
+      console.error(err);
+      if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError("Error al conectar con el servidor");
+      }
+    } finally {
       setLoading(false);
-      navigate("/administrator/usuarios");
-    }, 1000);
+    }
   };
 
   return (

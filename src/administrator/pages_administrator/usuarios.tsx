@@ -4,162 +4,114 @@ import { HiOutlineTrash, HiOutlinePencil, HiOutlinePlus } from "react-icons/hi";
 interface Usuario {
   id: number;
   nombre: string;
-  apellido_paterno: string;
-  apellido_materno: string;
-  email: string;
-  fecha_nacimiento: string;
-  direccion: string;
-  rol: string;
-  contraseña: string;
+  apellidoPaterno: string;
+  apellidoMaterno: string;
+  ci: string;
+  telefono: string;
+  correo: string;
+  contrasena: string;
 }
 
 export const UsuariosTable = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+
   const [form, setForm] = useState({
     nombre: "",
-    apellido_paterno: "",
-    apellido_materno: "",
-    email: "",
-    fecha_nacimiento: "",
-    direccion: "",
-    rol: "",
-    contraseña: "",
+    apellidoPaterno: "",
+    apellidoMaterno: "",
+    ci: "",
+    telefono: "",
+    correo: "",
+    contrasena: "",
   });
 
-  // Función para formatear fecha de YYYY-MM-DD a DD/MM/YYYY
-  const formatearFecha = (fecha: string): string => {
-    if (!fecha) return "";
-
-    // Si la fecha ya viene en formato DD/MM/YYYY, la retorna
-    if (fecha.includes("/")) return fecha;
-
-    // Si viene en formato YYYY-MM-DD (del input type="date")
-    const partes = fecha.split("-");
-    if (partes.length === 3) {
-      return `${partes[2]}/${partes[1]}/${partes[0]}`;
-    }
-
-    return fecha;
-  };
-
-  // Función para convertir de DD/MM/YYYY a YYYY-MM-DD (para el input)
-  const fechaParaInput = (fecha: string): string => {
-    if (!fecha) return "";
-
-    // Si ya está en formato YYYY-MM-DD
-    if (fecha.includes("-") && fecha.split("-")[0].length === 4) {
-      return fecha;
-    }
-
-    // Si está en formato DD/MM/YYYY
-    const partes = fecha.split("/");
-    if (partes.length === 3) {
-      return `${partes[2]}-${partes[1]}-${partes[0]}`;
-    }
-
-    return fecha;
-  };
-
   useEffect(() => {
-    const usuariosInicial: Usuario[] = [
-      {
-        id: 1,
-        nombre: "Gabo",
-        apellido_paterno: "García",
-        apellido_materno: "López",
-        email: "gabi@gmail.com",
-        fecha_nacimiento: "06/10/2002",
-        direccion: "Achachicala, La Paz",
-        rol: "Administrador",
-        contraseña: "123456",
-      },
-      {
-        id: 2,
-        nombre: "Vlad",
-        apellido_paterno: "III",
-        apellido_materno: "De Valaquia",
-        email: "vladelempalador@gmail.com",
-        fecha_nacimiento: "30/12/1431",
-        direccion: "Sighișoara, Romania",
-        rol: "Administrador",
-        contraseña: "1234567",
-      },
-    ];
-    setUsuarios(usuariosInicial);
+    const cargarUsuarios = async () => {
+      try {
+        const res = await fetch("http://localhost:3000/usuarios");
+        const data = await res.json();
+        setUsuarios(data);
+      } catch (error) {
+        console.log("Error cargando usuarios", error);
+      }
+    };
+
+    cargarUsuarios();
   }, []);
 
+  // ================================
+  // 🔥 2. AGREGAR USUARIO
+  // ================================
   const handleAdd = () => {
     setEditingId(null);
     setForm({
       nombre: "",
-      apellido_paterno: "",
-      apellido_materno: "",
-      email: "",
-      fecha_nacimiento: "",
-      direccion: "",
-      rol: "",
-      contraseña: "",
+      apellidoPaterno: "",
+      apellidoMaterno: "",
+      ci: "",
+      telefono: "",
+      correo: "",
+      contrasena: "",
     });
     setShowModal(true);
   };
 
+  // ================================
+  // 🔥 3. EDITAR USUARIO (llenado de modal)
+  // ================================
   const handleEdit = (usuario: Usuario) => {
     setEditingId(usuario.id);
     setForm({
       nombre: usuario.nombre,
-      apellido_paterno: usuario.apellido_paterno,
-      apellido_materno: usuario.apellido_materno,
-      email: usuario.email,
-      fecha_nacimiento: fechaParaInput(usuario.fecha_nacimiento),
-      direccion: usuario.direccion,
-      rol: usuario.rol,
-      contraseña: usuario.contraseña || "",
+      apellidoPaterno: usuario.apellidoPaterno,
+      apellidoMaterno: usuario.apellidoMaterno,
+      ci: usuario.ci,
+      telefono: usuario.telefono,
+      correo: usuario.correo,
+      contrasena: "", // no mostramos hash
     });
     setShowModal(true);
   };
 
-  const handleDelete = (id: number) => {
-    const usuariosActualizados = usuarios.filter((u) => u.id !== id);
-    setUsuarios(usuariosActualizados);
-  };
-
+  // ================================
+  // 🔥 5. GUARDAR USUARIO (POST/PUT)
+  // ================================
   const handleSave = () => {
-    if (
-      !form.nombre ||
-      !form.apellido_paterno ||
-      !form.apellido_materno ||
-      !form.email ||
-      !form.rol
-    ) {
-      alert("Completa todos los campos obligatorios");
-      return;
-    }
+    const url = editingId
+      ? `http://localhost:3000/usuarios/${editingId}`
+      : "http://localhost:3000/usuarios";
 
-    // Guardar la fecha en formato DD/MM/YYYY
-    const formConFechaFormateada = {
-      ...form,
-      fecha_nacimiento: formatearFecha(form.fecha_nacimiento),
-    };
+    const method = editingId ? "PUT" : "POST";
 
-    let usuariosActualizados;
+    fetch(url, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(form),
+    })
+      .then((res) => res.json())
+      .then((usuarioGuardado) => {
+        if (editingId) {
+          // Actualizar lista
+          setUsuarios(
+            usuarios.map((u) => (u.id === editingId ? usuarioGuardado : u))
+          );
+        } else {
+          // Agregar nuevo
+          setUsuarios([...usuarios, usuarioGuardado]);
+        }
 
-    if (editingId) {
-      usuariosActualizados = usuarios.map((u) =>
-        u.id === editingId ? { ...u, ...formConFechaFormateada } : u
-      );
-    } else {
-      usuariosActualizados = [
-        ...usuarios,
-        { id: Date.now(), ...formConFechaFormateada },
-      ];
-    }
-
-    setUsuarios(usuariosActualizados);
-    setShowModal(false);
+        setShowModal(false);
+      })
+      .catch((err) => console.error("Error guardando usuario:", err));
   };
 
+  // ================================
+  // UI
+  // ================================
   return (
     <div className="p-6">
       <div className="mb-4 flex justify-between items-center">
@@ -178,40 +130,32 @@ export const UsuariosTable = () => {
           <thead className="bg-slate-200 font-semibold">
             <tr>
               <th className="px-6 py-3">Nombre</th>
-              <th className="px-6 py-3">Apellido Paterno</th>
-              <th className="px-6 py-3">Apellido Materno</th>
-              <th className="px-6 py-3">Email</th>
-              <th className="px-6 py-3">Fecha Nacimiento</th>
-              <th className="px-6 py-3">Dirección</th>
-              <th className="px-6 py-3">Rol</th>
+              <th className="px-6 py-3">Ap. Paterno</th>
+              <th className="px-6 py-3">Ap. Materno</th>
+              <th className="px-6 py-3">Usuario</th>
+              <th className="px-6 py-3">Correo</th>
+              <th className="px-6 py-3">CI</th>
+              <th className="px-6 py-3">Teléfono</th>
               <th className="px-6 py-3 text-center">Acciones</th>
             </tr>
           </thead>
+
           <tbody>
-            {usuarios.map((usuario, index) => (
-              <tr
-                key={usuario.id}
-                className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}
-              >
+            {usuarios.map((usuario) => (
+              <tr key={usuario.id} className="border-b">
                 <td className="px-6 py-3">{usuario.nombre}</td>
-                <td className="px-6 py-3">{usuario.apellido_paterno}</td>
-                <td className="px-6 py-3">{usuario.apellido_materno}</td>
-                <td className="px-6 py-3">{usuario.email}</td>
-                <td className="px-6 py-3">{usuario.fecha_nacimiento}</td>
-                <td className="px-6 py-3">{usuario.direccion}</td>
-                <td className="px-6 py-3">{usuario.rol}</td>
+                <td className="px-6 py-3">{usuario.apellidoPaterno}</td>
+                <td className="px-6 py-3">{usuario.apellidoMaterno}</td>
+                <td className="px-6 py-3">{usuario.correo}</td>
+                <td className="px-6 py-3">{usuario.ci || "-"}</td>
+                <td className="px-6 py-3">{usuario.telefono || "-"}</td>
+
                 <td className="px-6 py-3 text-center">
                   <button
                     onClick={() => handleEdit(usuario)}
                     className="text-blue-600 hover:text-blue-800 mr-3"
                   >
                     <HiOutlinePencil size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(usuario.id)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    <HiOutlineTrash size={18} />
                   </button>
                 </td>
               </tr>
@@ -225,90 +169,88 @@ export const UsuariosTable = () => {
           className="fixed inset-0 flex items-center justify-center z-50"
           style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
         >
-          <div
-            className="rounded-lg p-6 w-full max-w-2xl max-h-96 overflow-y-auto border-2 border-slate-300 shadow-2xl"
-            style={{
-              backgroundColor: "rgba(255, 255, 255, 0.9)",
-              backdropFilter: "blur(8px)",
-            }}
-          >
+          <div className="rounded-lg p-6 w-full max-w-xl bg-white shadow-xl">
             <h3 className="text-lg font-bold mb-4">
               {editingId ? "Editar Usuario" : "Nuevo Usuario"}
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+              {/** CAMPOS **/}
+
               <input
                 type="text"
                 placeholder="Nombre"
+                className="input"
                 value={form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className="px-3 py-2 border border-slate-300 rounded bg-white"
               />
+
               <input
                 type="text"
                 placeholder="Apellido Paterno"
-                value={form.apellido_paterno}
+                className="input"
+                value={form.apellidoPaterno}
                 onChange={(e) =>
-                  setForm({ ...form, apellido_paterno: e.target.value })
+                  setForm({ ...form, apellidoPaterno: e.target.value })
                 }
-                className="px-3 py-2 border border-slate-300 rounded bg-white"
               />
+
               <input
                 type="text"
                 placeholder="Apellido Materno"
-                value={form.apellido_materno}
+                className="input"
+                value={form.apellidoMaterno}
                 onChange={(e) =>
-                  setForm({ ...form, apellido_materno: e.target.value })
+                  setForm({ ...form, apellidoMaterno: e.target.value })
                 }
-                className="px-3 py-2 border border-slate-300 rounded bg-white"
               />
+
               <input
                 type="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="px-3 py-2 border border-slate-300 rounded bg-white"
+                placeholder="Correo"
+                className="input"
+                value={form.correo}
+                onChange={(e) => setForm({ ...form, correo: e.target.value })}
               />
-              <input
-                type="date"
-                placeholder="Fecha de Nacimiento"
-                value={form.fecha_nacimiento}
-                onChange={(e) =>
-                  setForm({ ...form, fecha_nacimiento: e.target.value })
-                }
-                className="px-3 py-2 border border-slate-300 rounded bg-white"
-              />
+
               <input
                 type="text"
-                placeholder="Dirección"
-                value={form.direccion}
-                onChange={(e) =>
-                  setForm({ ...form, direccion: e.target.value })
-                }
-                className="px-3 py-2 border border-slate-300 rounded bg-white"
+                placeholder="CI"
+                className="input"
+                value={form.ci}
+                onChange={(e) => setForm({ ...form, ci: e.target.value })}
               />
-              <select
-                value={form.rol}
-                onChange={(e) => setForm({ ...form, rol: e.target.value })}
-                className="px-3 py-2 border border-slate-300 rounded md:col-span-2 bg-white"
-              >
-                <option value="">Seleccionar rol</option>
-                <option value="Administrador">Administrador</option>
-                <option value="Vendedor">Vendedor</option>
-                <option value="Recepcionista">Recepcionista</option>
-              </select>
+
+              <input
+                type="text"
+                placeholder="Teléfono"
+                className="input"
+                value={form.telefono}
+                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
+              />
+
+              <input
+                type="password"
+                placeholder="Contraseña"
+                className="input md:col-span-2"
+                value={form.contrasena}
+                onChange={(e) =>
+                  setForm({ ...form, contrasena: e.target.value })
+                }
+              />
             </div>
 
             <div className="flex gap-2">
               <button
+                className="flex-1 px-3 py-2 border rounded"
                 onClick={() => setShowModal(false)}
-                className="flex-1 px-3 py-2 border border-slate-300 rounded hover:bg-slate-50 bg-white"
               >
                 Cancelar
               </button>
+
               <button
-                onClick={handleSave}
                 className="flex-1 px-3 py-2 bg-[#d88c6f] text-white rounded hover:bg-[#9e4e2f]"
+                onClick={handleSave}
               >
                 Guardar
               </button>

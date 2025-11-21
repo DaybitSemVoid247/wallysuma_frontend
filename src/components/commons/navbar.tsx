@@ -76,13 +76,6 @@ export const Navbar = () => {
             </NavLink>
           </div>
         )}
-
-        {/*<button className="relative">
-          <span className="absolute -bottom-2 -right-2 w-5 h-5 grid place-items-center bg-black text-white text-xs rounded-full">
-            0
-          </span>
-          <HiOutlineShoppingBag size={25} />
-        </button>*/}
       </div>
       <button className="md:hidden">
         <FaBarsStaggered size={25} />
