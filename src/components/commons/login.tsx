@@ -33,13 +33,18 @@ export default function InicioSesionUsuarios() {
 
       localStorage.setItem("token", token);
       localStorage.setItem("usuarioActual", JSON.stringify(usuario));
+      console.log("Usuario actual:", usuario);
 
-      if (usuario.roles.includes("Administrador")) {
-        navigate("/administrator/usuarios");
-      } else if (usuario.roles.includes("Usuario")) {
-        navigate("/articulos");
-      } else if (usuario.roles.includes("Cocinero")) {
-        navigate("/pedidos");
+      const rutasPorRol: Record<string, string> = {
+        Administrador: "/administrator/usuarios",
+        Usuario: "/articulos",
+        Cocinero: "/pedidos",
+      };
+
+      const rolAsignado = usuario.roles.find((rol: string) => rutasPorRol[rol]);
+
+      if (rolAsignado) {
+        navigate(rutasPorRol[rolAsignado]);
       } else {
         navigate("/");
       }

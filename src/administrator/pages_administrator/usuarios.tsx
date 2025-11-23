@@ -6,14 +6,21 @@ interface Usuario {
   nombre: string;
   apellidoPaterno: string;
   apellidoMaterno: string;
-  ci: string;
-  telefono: string;
   correo: string;
   contrasena: string;
+  roles?: Rol[];
+}
+
+interface Rol {
+  id: number;
+  nombre: string;
 }
 
 export const UsuariosTable = () => {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [roles, setRoles] = useState<Rol[]>([]);
+  const [rolesSeleccionados, setRolesSeleccionados] = useState<number[]>([]);
+
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -21,8 +28,6 @@ export const UsuariosTable = () => {
     nombre: "",
     apellidoPaterno: "",
     apellidoMaterno: "",
-    ci: "",
-    telefono: "",
     correo: "",
     contrasena: "",
   });
@@ -38,80 +43,75 @@ export const UsuariosTable = () => {
       }
     };
 
+    const cargarRoles = async () => {
+      try {
+        const res = await fetch("http://localhost:3000/roles");
+        const data = await res.json();
+        setRoles(data);
+      } catch (error) {
+        console.log("Error cargando roles", error);
+      }
+    };
+
     cargarUsuarios();
+    cargarRoles();
   }, []);
 
-  // ================================
-  // 🔥 2. AGREGAR USUARIO
-  // ================================
   const handleAdd = () => {
     setEditingId(null);
     setForm({
       nombre: "",
       apellidoPaterno: "",
       apellidoMaterno: "",
-      ci: "",
-      telefono: "",
       correo: "",
       contrasena: "",
     });
+    setRolesSeleccionados([]);
     setShowModal(true);
   };
 
-  // ================================
-  // 🔥 3. EDITAR USUARIO (llenado de modal)
-  // ================================
   const handleEdit = (usuario: Usuario) => {
     setEditingId(usuario.id);
     setForm({
       nombre: usuario.nombre,
       apellidoPaterno: usuario.apellidoPaterno,
       apellidoMaterno: usuario.apellidoMaterno,
-      ci: usuario.ci,
-      telefono: usuario.telefono,
       correo: usuario.correo,
-      contrasena: "", // no mostramos hash
+      contrasena: "",
     });
+    setRolesSeleccionados(usuario.roles?.map((r) => r.id) || []);
     setShowModal(true);
   };
 
-  // ================================
-  // 🔥 5. GUARDAR USUARIO (POST/PUT)
-  // ================================
   const handleSave = () => {
     const url = editingId
       ? `http://localhost:3000/usuarios/${editingId}`
       : "http://localhost:3000/usuarios";
 
     const method = editingId ? "PUT" : "POST";
+    const body = { ...form, rolesIds: rolesSeleccionados };
 
     fetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(form),
+      body: JSON.stringify(body),
     })
       .then((res) => res.json())
       .then((usuarioGuardado) => {
         if (editingId) {
-          // Actualizar lista
           setUsuarios(
             usuarios.map((u) => (u.id === editingId ? usuarioGuardado : u))
           );
         } else {
-          // Agregar nuevo
           setUsuarios([...usuarios, usuarioGuardado]);
         }
-
         setShowModal(false);
       })
       .catch((err) => console.error("Error guardando usuario:", err));
   };
 
-  // ================================
-  // UI
-  // ================================
   return (
     <div className="p-6">
       <div className="mb-4 flex justify-between items-center">
@@ -132,10 +132,7 @@ export const UsuariosTable = () => {
               <th className="px-6 py-3">Nombre</th>
               <th className="px-6 py-3">Ap. Paterno</th>
               <th className="px-6 py-3">Ap. Materno</th>
-              <th className="px-6 py-3">Usuario</th>
               <th className="px-6 py-3">Correo</th>
-              <th className="px-6 py-3">CI</th>
-              <th className="px-6 py-3">Teléfono</th>
               <th className="px-6 py-3 text-center">Acciones</th>
             </tr>
           </thead>
@@ -147,8 +144,6 @@ export const UsuariosTable = () => {
                 <td className="px-6 py-3">{usuario.apellidoPaterno}</td>
                 <td className="px-6 py-3">{usuario.apellidoMaterno}</td>
                 <td className="px-6 py-3">{usuario.correo}</td>
-                <td className="px-6 py-3">{usuario.ci || "-"}</td>
-                <td className="px-6 py-3">{usuario.telefono || "-"}</td>
 
                 <td className="px-6 py-3 text-center">
                   <button
@@ -175,8 +170,6 @@ export const UsuariosTable = () => {
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-              {/** CAMPOS **/}
-
               <input
                 type="text"
                 placeholder="Nombre"
@@ -184,7 +177,6 @@ export const UsuariosTable = () => {
                 value={form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
               />
-
               <input
                 type="text"
                 placeholder="Apellido Paterno"
@@ -194,7 +186,6 @@ export const UsuariosTable = () => {
                   setForm({ ...form, apellidoPaterno: e.target.value })
                 }
               />
-
               <input
                 type="text"
                 placeholder="Apellido Materno"
@@ -204,7 +195,6 @@ export const UsuariosTable = () => {
                   setForm({ ...form, apellidoMaterno: e.target.value })
                 }
               />
-
               <input
                 type="email"
                 placeholder="Correo"
@@ -212,23 +202,6 @@ export const UsuariosTable = () => {
                 value={form.correo}
                 onChange={(e) => setForm({ ...form, correo: e.target.value })}
               />
-
-              <input
-                type="text"
-                placeholder="CI"
-                className="input"
-                value={form.ci}
-                onChange={(e) => setForm({ ...form, ci: e.target.value })}
-              />
-
-              <input
-                type="text"
-                placeholder="Teléfono"
-                className="input"
-                value={form.telefono}
-                onChange={(e) => setForm({ ...form, telefono: e.target.value })}
-              />
-
               <input
                 type="password"
                 placeholder="Contraseña"
@@ -238,6 +211,28 @@ export const UsuariosTable = () => {
                   setForm({ ...form, contrasena: e.target.value })
                 }
               />
+
+              <div className="md:col-span-2">
+                <label className="block mb-1 font-semibold">Roles:</label>
+                <select
+                  multiple
+                  value={rolesSeleccionados.map(String)}
+                  onChange={(e) => {
+                    const selected = Array.from(
+                      e.target.selectedOptions,
+                      (option) => Number(option.value)
+                    );
+                    setRolesSeleccionados(selected);
+                  }}
+                  className="w-full border p-2 rounded"
+                >
+                  {roles.map((rol) => (
+                    <option key={rol.id} value={rol.id}>
+                      {rol.nombre}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex gap-2">
@@ -247,7 +242,6 @@ export const UsuariosTable = () => {
               >
                 Cancelar
               </button>
-
               <button
                 className="flex-1 px-3 py-2 bg-[#d88c6f] text-white rounded hover:bg-[#9e4e2f]"
                 onClick={handleSave}
