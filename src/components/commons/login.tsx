@@ -306,6 +306,7 @@ export default function AuthPage() {
               </div>
             </form>
 
+
             <div className="w-full flex justify-center mt-6">
               <p className="text-black-900 font-semibold text-center">
                 ¿Ya tienes cuenta?
