@@ -1,17 +1,13 @@
 import { Outlet } from "react-router-dom";
-import { Navbar } from "../components/commons/navbar";
 
 export const LoginLayout = () => {
   return (
-    <>
-      <div>
-        <Navbar />
-        <main>
-          <Outlet />
-        </main>
-      </div>
-    </>
+    <div 
+      className="min-h-screen w-full m-0 p-0 bg-transparent">
+      <Outlet />
+    </div>
   );
 };
+
 
 export default LoginLayout;

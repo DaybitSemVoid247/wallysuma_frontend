@@ -11,7 +11,7 @@ export const Footer = () => {
         }
         onClick={() => navigate("/")}
       >
-        Boutique SCIIARk
+        Boutique 
       </div>
       <div className="flex flex-col gap-4 flex-1">
         <p className="font-semibold uppercase tracking-tighter">
