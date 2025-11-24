@@ -6,7 +6,6 @@ import {
   HiOutlineChartBar,
   HiOutlineShoppingBag,
 } from "react-icons/hi";
-import { HiUserCircle } from "react-icons/hi";
 
 const sidebarLinks = [
   {
@@ -53,7 +52,6 @@ export const Sidebar = () => {
 
   return (
     <aside className="w-64 bg-[#f6f1eb] border-r border-slate-200 min-h-screen p-5 flex flex-col justify-between">
-
       {/* LINKS */}
       <div className="space-y-2">
         {sidebarLinks.map((link) => {

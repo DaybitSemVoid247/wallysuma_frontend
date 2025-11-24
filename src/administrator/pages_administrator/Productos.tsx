@@ -90,7 +90,7 @@ export const Productos = () => {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(true);
-  const itemsPerPage = 6;
+  const itemsPerPage = 5;
 
   const handleAdd = () => {
     setEditingId(null);
