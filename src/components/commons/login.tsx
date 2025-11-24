@@ -21,12 +21,12 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [correoLogin, setCorreoLogin] = useState("");
   const [contrasenaLogin, setContrasenaLogin] = useState("");
-  
+
   // Estados para el modal de verificación
   const [showModal, setShowModal] = useState(false);
   const [codigo, setCodigo] = useState("");
   const [correoVerificacion, setCorreoVerificacion] = useState("");
-  
+
   const [formData, setFormData] = useState<FormData>({
     nombre: "",
     apellidoPaterno: "",
@@ -63,7 +63,7 @@ export default function AuthPage() {
       // Mapa flexible de rutas por rol
       const rutasPorRol: Record<string, string> = {
         Administrador: "/administrator/usuarios",
-        Usuario: "/articulos",
+        Usuario: "/",
         Cocinero: "/pedidos",
       };
 
@@ -75,10 +75,11 @@ export default function AuthPage() {
       } else {
         navigate("/");
       }
-
     } catch (err: any) {
       console.error(err);
-      setError(err.response?.data?.message || "Error al conectar con el servidor");
+      setError(
+        err.response?.data?.message || "Error al conectar con el servidor"
+      );
     } finally {
       setLoading(false);
     }
@@ -178,7 +179,6 @@ export default function AuthPage() {
         contrasena: "",
         confirmarContrasena: "",
       });
-
     } catch (err: any) {
       console.error(err);
       if (err.response?.data?.message) {
@@ -244,14 +244,16 @@ export default function AuthPage() {
       {/* Formulario de Login/Registro */}
       <div
         className="w-full min-h-screen flex items-center justify-center p-6 overflow-auto bg-cover bg-center bg-no-repeat"
-        style={{ 
-          backgroundImage: "url('/public/wally.jpg')", 
+        style={{
+          backgroundImage: "url('/public/wallysuma.png')",
         }}
       >
         <div className="absolute inset-0 bg-[#FFA07A]/10 backdrop-blur-sm"></div>
-        <div 
-          className={`relative z-10 w-full ${isLogin ? "max-w-md" : "max-w-4xl"} 
-          bg-white/50 backdrop-blur-sm border-4 border-black-900 shadow-2xl p-8 my-6`} 
+        <div
+          className={`relative z-10 w-full ${
+            isLogin ? "max-w-md" : "max-w-4xl"
+          } 
+          bg-white/50 backdrop-blur-sm border-4 border-black-900 shadow-2xl p-8 my-6`}
           style={{ borderRadius: "16px" }}
         >
           <div className="text-center mb-8">
@@ -311,12 +313,12 @@ export default function AuthPage() {
               <div className="mt-6 pt-6 border-t-2 border-black-900 text-center">
                 <p className="text-black-900 font-semibold">
                   ¿No tienes cuenta?
-                  <button 
+                  <button
                     type="button"
                     onClick={() => {
                       setIsLogin(false);
                       setError("");
-                    }} 
+                    }}
                     className="text-cyan-600 hover:text-cyan-700 font-bold ml-2 hover:underline"
                   >
                     Regístrate aquí
@@ -326,93 +328,93 @@ export default function AuthPage() {
             </form>
           ) : (
             <>
-              <form 
-                onSubmit={handleRegistro} 
+              <form
+                onSubmit={handleRegistro}
                 className="grid grid-cols-1 md:grid-cols-2 gap-6"
               >
                 <div className="flex items-center border-b-4 border-cyan-600 pb-3">
                   <FaUser className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
-                  <input 
-                    type="text" 
-                    placeholder="Nombre" 
-                    name="nombre" 
-                    value={formData.nombre} 
-                    onChange={handleChange} 
-                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium" 
-                    required 
+                  <input
+                    type="text"
+                    placeholder="Nombre"
+                    name="nombre"
+                    value={formData.nombre}
+                    onChange={handleChange}
+                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium"
+                    required
                   />
                 </div>
 
                 <div className="flex items-center border-b-4 border-cyan-600 pb-3">
                   <FaUser className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
-                  <input 
-                    type="text" 
-                    placeholder="Apellido Paterno" 
-                    name="apellidoPaterno" 
-                    value={formData.apellidoPaterno} 
-                    onChange={handleChange} 
-                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium" 
-                    required 
+                  <input
+                    type="text"
+                    placeholder="Apellido Paterno"
+                    name="apellidoPaterno"
+                    value={formData.apellidoPaterno}
+                    onChange={handleChange}
+                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium"
+                    required
                   />
                 </div>
 
                 <div className="flex items-center border-b-4 border-cyan-600 pb-3">
                   <FaUser className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
-                  <input 
-                    type="text" 
-                    placeholder="Apellido Materno" 
-                    name="apellidoMaterno" 
-                    value={formData.apellidoMaterno} 
-                    onChange={handleChange} 
-                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium" 
-                    required 
+                  <input
+                    type="text"
+                    placeholder="Apellido Materno"
+                    name="apellidoMaterno"
+                    value={formData.apellidoMaterno}
+                    onChange={handleChange}
+                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium"
+                    required
                   />
                 </div>
 
                 <div className="flex items-center border-b-4 border-cyan-600 pb-3">
                   <FaEnvelope className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
-                  <input 
-                    type="email" 
-                    placeholder="Correo Electrónico" 
-                    name="correo" 
-                    value={formData.correo} 
-                    onChange={handleChange} 
-                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium" 
-                    required 
+                  <input
+                    type="email"
+                    placeholder="Correo Electrónico"
+                    name="correo"
+                    value={formData.correo}
+                    onChange={handleChange}
+                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium"
+                    required
                   />
                 </div>
 
                 <div className="flex items-center border-b-4 border-cyan-600 pb-3">
                   <RiLockPasswordLine className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
-                  <input 
-                    type="password" 
-                    placeholder="Contraseña" 
-                    name="contrasena" 
-                    value={formData.contrasena} 
-                    onChange={handleChange} 
-                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium" 
-                    required 
+                  <input
+                    type="password"
+                    placeholder="Contraseña"
+                    name="contrasena"
+                    value={formData.contrasena}
+                    onChange={handleChange}
+                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium"
+                    required
                   />
                 </div>
 
                 <div className="flex items-center border-b-4 border-cyan-600 pb-3">
                   <RiLockPasswordLine className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
-                  <input 
-                    type="password" 
-                    placeholder="Confirme Contraseña" 
-                    name="confirmarContrasena" 
-                    value={formData.confirmarContrasena} 
-                    onChange={handleChange} 
-                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium" 
-                    required 
+                  <input
+                    type="password"
+                    placeholder="Confirme Contraseña"
+                    name="confirmarContrasena"
+                    value={formData.confirmarContrasena}
+                    onChange={handleChange}
+                    className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium"
+                    required
                   />
                 </div>
 
                 <div className="md:col-span-2 flex justify-center pt-4">
-                  <button 
-                    type="submit" 
-                    disabled={loading} 
-                    className="bg-cyan-600 text-gray-50 px-8 py-3 border-2 border-cyan-700 hover:bg-cyan-700 hover:shadow-lg transition-all font-bold text-lg disabled:opacity-50" 
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="bg-cyan-600 text-gray-50 px-8 py-3 border-2 border-cyan-700 hover:bg-cyan-700 hover:shadow-lg transition-all font-bold text-lg disabled:opacity-50"
                     style={{ borderRadius: "2px" }}
                   >
                     {loading ? "Registrando..." : "REGISTRARSE"}
@@ -423,12 +425,12 @@ export default function AuthPage() {
               <div className="w-full flex justify-center mt-6">
                 <p className="text-black-900 font-semibold text-center">
                   ¿Ya tienes cuenta?
-                  <button 
+                  <button
                     type="button"
                     onClick={() => {
                       setIsLogin(true);
                       setError("");
-                    }} 
+                    }}
                     className="text-cyan-600 hover:text-cyan-700 font-bold hover:underline ml-2"
                   >
                     Inicia sesión aquí

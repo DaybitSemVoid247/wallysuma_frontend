@@ -4,6 +4,8 @@ import {
   HiOutlinePencil,
   HiOutlinePlus,
   HiOutlineSearch,
+  HiChevronDown,
+  HiChevronUp,
 } from "react-icons/hi";
 
 interface Producto {
@@ -87,7 +89,8 @@ export const Productos = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [showFilters, setShowFilters] = useState(true);
+  const itemsPerPage = 6;
 
   const handleAdd = () => {
     setEditingId(null);
@@ -174,48 +177,64 @@ export const Productos = () => {
         </button>
       </div>
 
-      {/* Filtros */}
-      <div className="mb-6 bg-white shadow-md rounded-lg p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Buscador */}
-          <div className="relative">
-            <HiOutlineSearch
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-              size={20}
-            />
-            <input
-              type="text"
-              placeholder="Buscar por nombre..."
-              value={searchTerm}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:bg-white"
-            />
-          </div>
-
-          {/* Filtro por categoría */}
-          <select
-            value={categoryFilter}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-          >
-            <option value="">Todas las categorías</option>
-            <option value="Platos Principales">Platos Principales</option>
-            <option value="Entradas">Entradas</option>
-            <option value="Ensaladas">Ensaladas</option>
-            <option value="Bebidas">Bebidas</option>
-            <option value="Postres">Postres</option>
-          </select>
-        </div>
-
-        {/* Contador de resultados */}
-        <div className="mt-3 text-sm text-slate-600">
-          Mostrando {productosActuales.length} de {productosFiltrados.length}{" "}
-          productos
-        </div>
+      {/* Botón para mostrar/ocultar filtros */}
+      <div className="mb-4">
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className="flex items-center gap-2 bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg transition font-medium"
+        >
+          {showFilters ? (
+            <>
+              <HiChevronUp size={20} />
+              Ocultar Filtros
+            </>
+          ) : (
+            <>
+              <HiChevronDown size={20} />
+              Mostrar Filtros
+            </>
+          )}
+        </button>
       </div>
 
+      {/* Filtros colapsables */}
+      {showFilters && (
+        <div className="mb-6 bg-white shadow-md rounded-lg p-4 transition-all duration-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Buscador */}
+            <div className="relative">
+              <HiOutlineSearch
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
+                size={20}
+              />
+              <input
+                type="text"
+                placeholder="Buscar por nombre..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:bg-white"
+              />
+            </div>
+
+            {/* Filtro por categoría */}
+            <select
+              value={categoryFilter}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            >
+              <option value="">Todas las categorías</option>
+              <option value="Platos Principales">Platos Principales</option>
+              <option value="Entradas">Entradas</option>
+              <option value="Ensaladas">Ensaladas</option>
+              <option value="Bebidas">Bebidas</option>
+              <option value="Postres">Postres</option>
+            </select>
+          </div>
+        </div>
+      )}
+
       {/* Tabla */}
-      <div className="overflow-x-auto shadow-md rounded-lg bg-white mb-6">
+      <div className="overflow-x-auto shadow-md rounded-lg bg-white mb-4">
         <table className="w-full text-sm text-left">
           <thead className="bg-slate-200 font-semibold">
             <tr>
@@ -273,6 +292,12 @@ export const Productos = () => {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Contador de resultados centrado */}
+      <div className="text-center text-sm text-slate-600 mb-3">
+        Mostrando {productosActuales.length} de {productosFiltrados.length}{" "}
+        productos
       </div>
 
       {/* Paginación */}

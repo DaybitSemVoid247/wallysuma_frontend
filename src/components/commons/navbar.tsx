@@ -28,11 +28,9 @@ export const Navbar = () => {
 
       if (currentScrollY < 10) {
         setIsVisible(true);
-      }
-      else if (currentScrollY > lastScrollY + 2 && currentScrollY > 2) {
+      } else if (currentScrollY > lastScrollY + 2 && currentScrollY > 2) {
         setIsVisible(false);
-      }
-      else if (currentScrollY < lastScrollY - 2) {
+      } else if (currentScrollY < lastScrollY - 2) {
         setIsVisible(true);
       }
 
@@ -76,10 +74,6 @@ export const Navbar = () => {
       </nav>
 
       <div className="flex gap-5 items-center">
-        <button>
-          <HiOutlineSearch size={25} />
-        </button>
-
         {usuario ? (
           <div className="flex items-center gap-3">
             <div className="border-2 border-slate-700 w-9 h-9 rounded-full grid place-items-center text-lg font-bold bg-cyan-600 text-white">
