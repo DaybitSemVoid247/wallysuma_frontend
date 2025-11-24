@@ -1,8 +1,7 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
 import {
   HiOutlineSearch,
-  HiOutlineShoppingBag,
   HiOutlineUser,
 } from "react-icons/hi";
 import { FaBarsStaggered } from "react-icons/fa6";
@@ -11,6 +10,13 @@ import { Logo } from "./Logo";
 
 export const Navbar = () => {
   const navigate = useNavigate();
+  const location = useLocation();   // ← 🔥 detecta la ruta actual
+
+  // 🔥 Si estamos en /administrator o subrutas, NO mostrar navbar
+  if (location.pathname.startsWith("/administrator")) {
+    return null;
+  }
+
   const [usuario, setUsuario] = useState<any>(null);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -47,7 +53,7 @@ export const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem("usuarioActual");
     setUsuario(null);
-    navigate("/");
+    navigate("/login");
   };
 
   return (
@@ -57,6 +63,7 @@ export const Navbar = () => {
       }`}
     >
       <Logo />
+
       <nav className="space-x-5 hidden md:flex">
         {navbarLinks.map((link) => (
           <NavLink
@@ -65,7 +72,7 @@ export const Navbar = () => {
             className={({ isActive }) =>
               `${
                 isActive ? "text-[#9e4e2f] underline" : ""
-              } transition-all duration-300 font-medium hover:text-[#9e4e2f] hover:underline `
+              } transition-all duration-300 font-medium hover:text-[#9e4e2f] hover:underline`
             }
           >
             {link.title}
@@ -101,6 +108,7 @@ export const Navbar = () => {
           </div>
         )}
       </div>
+
       <button className="md:hidden">
         <FaBarsStaggered size={25} />
       </button>
