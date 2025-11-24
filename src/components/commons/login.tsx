@@ -145,13 +145,14 @@ export default function AuthPage() {
     <div
       className="w-full min-h-screen flex items-center justify-center p-6 overflow-auto bg-cover bg-center bg-no-repeat"
       style={{ 
-        backgroundImage: "url('/public/wallysuma.png')", 
-        backgroundColor: "#f0f9ff" 
+        backgroundImage: "url('/public/wally.jpg')", 
       }}
     >
+      <div className="absolute inset-0 bg-[#FFA07A]/10 backdrop-blur-sm"></div>
       <div 
-        className={`relative z-10 w-full ${isLogin ? "max-w-md" : "max-w-4xl"} bg-white/50 backdrop-blur-sm border-4 border-black-900 shadow-2xl p-8 my-6`} 
-        style={{ borderRadius: "2px" }}
+        className={`relative z-10 w-full ${isLogin ? "max-w-md" : "max-w-4xl"} 
+        bg-white/50 backdrop-blur-sm border-4 border-black-900 shadow-2xl p-8 my-6`} 
+        style={{ borderRadius: "16px" }}
       >
         <div className="text-center mb-8">
           <h2 className="text-4xl font-bold text-black-900 mb-2">
@@ -201,7 +202,7 @@ export default function AuthPage() {
                 type="submit"
                 disabled={loading}
                 className="bg-cyan-600 text-white px-8 py-3 border-2 border-cyan-700 hover:bg-cyan-700 hover:shadow-lg transition-all font-bold text-lg disabled:bg-gray-400 disabled:border-gray-500"
-                style={{ borderRadius: "2px" }}
+                style={{ borderRadius: "16px" }}
               >
                 {loading ? "CARGANDO..." : "ENTRAR"}
               </button>
