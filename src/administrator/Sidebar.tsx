@@ -1,11 +1,12 @@
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import {
   HiOutlineUsers,
   HiOutlineViewGrid,
   HiOutlineChartBar,
   HiOutlineShoppingBag,
-  HiUserCircle,
 } from "react-icons/hi";
+import { HiUserCircle } from "react-icons/hi";
 
 const sidebarLinks = [
   {
@@ -35,8 +36,25 @@ const sidebarLinks = [
 ];
 
 export const Sidebar = () => {
+  const navigate = useNavigate();
+  const [usuario, setUsuario] = useState<any>(null);
+
+  useEffect(() => {
+    const usuarioActual = localStorage.getItem("usuarioActual");
+    if (usuarioActual) {
+      setUsuario(JSON.parse(usuarioActual));
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("usuarioActual");
+    navigate("/login");
+  };
+
   return (
-    <aside className="w-64 bg-[#f6f1eb]  border-r border-slate-200 min-h-screen p-5">
+    <aside className="w-64 bg-[#f6f1eb] border-r border-slate-200 min-h-screen p-5 flex flex-col justify-between">
+
+      {/* LINKS */}
       <div className="space-y-2">
         {sidebarLinks.map((link) => {
           const Icon = link.icon;
@@ -58,6 +76,27 @@ export const Sidebar = () => {
           );
         })}
       </div>
+
+      {/* USUARIO Y LOGOUT ABAJO */}
+      {usuario && (
+        <div className="mt-5 p-4 bg-[#e8dfd5] rounded-lg flex items-center gap-3 border border-slate-300">
+          <div className="w-10 h-10 rounded-full bg-cyan-600 text-white grid place-items-center font-bold text-lg">
+            {usuario.nombre?.charAt(0).toUpperCase()}
+          </div>
+
+          <div className="flex-1">
+            <p className="font-semibold text-sm">{usuario.nombre}</p>
+            <p className="text-xs text-gray-600">{usuario.rol}</p>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            className="bg-red-600 text-white text-xs px-3 py-1 rounded hover:bg-red-700"
+          >
+            Salir
+          </button>
+        </div>
+      )}
     </aside>
   );
 };
