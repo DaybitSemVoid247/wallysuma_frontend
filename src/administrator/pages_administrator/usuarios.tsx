@@ -35,7 +35,7 @@ export const UsuariosTable = () => {
   useEffect(() => {
     const cargarUsuarios = async () => {
       try {
-        const res = await fetch("http://localhost:3000/usuarios");
+        const res = await fetch("http://10.226.35.58:3000/usuarios");
         const data = await res.json();
         setUsuarios(data);
       } catch (error) {
@@ -45,7 +45,7 @@ export const UsuariosTable = () => {
 
     const cargarRoles = async () => {
       try {
-        const res = await fetch("http://localhost:3000/roles");
+        const res = await fetch("http://10.226.35.58:3000/roles");
         const data = await res.json();
         setRoles(data);
       } catch (error) {
@@ -85,8 +85,8 @@ export const UsuariosTable = () => {
 
   const handleSave = () => {
     const url = editingId
-      ? `http://localhost:3000/usuarios/${editingId}`
-      : "http://localhost:3000/usuarios";
+      ? `http://10.226.35.58:3000/usuarios/${editingId}`
+      : "http://10.226.35.58:3000/usuarios";
 
     const method = editingId ? "PUT" : "POST";
     const body = { ...form, rolesIds: rolesSeleccionados };

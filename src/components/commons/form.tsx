@@ -61,7 +61,7 @@ export default function RegistroUsuarios() {
     }
 
     try {
-      const API_URL = "http://localhost:3000/usuarios/verificar-codigo";
+      const API_URL = "http://10.226.35.58:3000/usuarios/verificar-codigo";
 
       const response = await axios.post(API_URL, {
         correo: correoVerificacion,
@@ -102,7 +102,7 @@ export default function RegistroUsuarios() {
     try {
       setLoading(true);
 
-      const API_URL = "http://localhost:3000/usuarios";
+      const API_URL = "http://10.226.35.58:3000/usuarios";
 
       await axios.post(API_URL, {
         correo: formData.correo,
