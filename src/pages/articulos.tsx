@@ -1,173 +1,130 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-interface Product {
+// Interfaces basadas en tu backend
+interface Categoria {
   id: number;
-  name: string;
-  description: string;
-  price: number;
-  image: string;
-  badge?: string;
-  category: "comidas" | "cafeteria";
+  nombre: string;
+  descripcion?: string;
+  activo: boolean;
 }
 
-interface CartItem extends Product {
+interface Subcategoria {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  categoria: Categoria;
+  activo: boolean;
+}
+
+interface Producto {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  precio: number;
+  disponibilidad?: number;
+  imagen: string | null;
+  subcategoria: Subcategoria;
+  activo: boolean;
+}
+
+interface CartItem extends Producto {
   quantity: number;
 }
 
 type Quantities = Record<number, number>;
 
+// Configuración de la API
+const API_URL = "http://localhost:3000"; // Cambia esto por tu URL del backend
+
+// Servicio API
+const api = {
+  async getCategorias(): Promise<Categoria[]> {
+    const response = await fetch(`${API_URL}/categorias`);
+    if (!response.ok) throw new Error("Error al cargar categorías");
+    return response.json();
+  },
+
+  async getProductos(): Promise<Producto[]> {
+    const response = await fetch(`${API_URL}/productos`);
+    if (!response.ok) throw new Error("Error al cargar productos");
+    return response.json();
+  },
+
+  async getSubcategorias(): Promise<Subcategoria[]> {
+    const response = await fetch(`${API_URL}/subcategorias`);
+    if (!response.ok) throw new Error("Error al cargar subcategorías");
+    return response.json();
+  },
+};
+
 const MenuCompleto = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [quantities, setQuantities] = useState<Quantities>({});
   const [showModal, setShowModal] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<"comidas" | "cafeteria">(
-    "comidas"
-  );
+  const [showQR, setShowQR] = useState<boolean>(false);
   const [animatingItems, setAnimatingItems] = useState<number[]>([]);
 
-  const comidas: Product[] = [
-    {
-      id: 1,
-      name: "Pizza Margarita",
-      description: "Pizza clásica con tomate fresco, mozzarella y albahaca",
-      price: 12.99,
-      image:
-        "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=500&h=500&fit=crop",
-      badge: "Popular",
-      category: "comidas",
-    },
-    {
-      id: 2,
-      name: "Hamburguesa Gourmet",
-      description:
-        "Carne angus, queso cheddar, bacon crujiente y salsa especial",
-      price: 14.99,
-      image:
-        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&h=500&fit=crop",
-      badge: "Nuevo",
-      category: "comidas",
-    },
-    {
-      id: 3,
-      name: "Ensalada César",
-      description:
-        "Lechuga romana, pollo a la parrilla, croutones y aderezo césar",
-      price: 9.99,
-      image:
-        "https://images.unsplash.com/photo-1546793665-c74683f339c1?w=500&h=500&fit=crop",
-      category: "comidas",
-    },
-    {
-      id: 4,
-      name: "Pasta Carbonara",
-      description:
-        "Pasta fresca con panceta, huevo, parmesano y pimienta negra",
-      price: 13.99,
-      image:
-        "https://images.unsplash.com/photo-1612874742237-6526221588e3?w=500&h=500&fit=crop",
-      badge: "Chef",
-      category: "comidas",
-    },
-    {
-      id: 5,
-      name: "Tacos al Pastor",
-      description: "Tres tacos con carne al pastor, piña, cilantro y cebolla",
-      price: 11.99,
-      image:
-        "https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&h=500&fit=crop",
-      category: "comidas",
-    },
-    {
-      id: 6,
-      name: "Sushi Variado",
-      description: "Selección de 12 piezas de sushi con wasabi y jengibre",
-      price: 18.99,
-      image:
-        "https://images.unsplash.com/photo-1579584425555-c3ce17fd4351?w=500&h=500&fit=crop",
-      badge: "Premium",
-      category: "comidas",
-    },
-  ];
+  // Estados para datos del backend
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+  const [categoriaActiva, setCategoriaActiva] = useState<number | null>(null);
 
-  const cafeteria: Product[] = [
-    {
-      id: 7,
-      name: "Café Americano",
-      description: "Café espresso suave con agua caliente",
-      price: 3.99,
-      image:
-        "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?w=500&h=500&fit=crop",
-      badge: "Clásico",
-      category: "cafeteria",
-    },
-    {
-      id: 8,
-      name: "Cappuccino",
-      description: "Espresso con espuma de leche cremosa y canela",
-      price: 4.99,
-      image:
-        "https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=500&h=500&fit=crop",
-      badge: "Popular",
-      category: "cafeteria",
-    },
-    {
-      id: 9,
-      name: "Latte Vainilla",
-      description: "Café con leche vaporizada y sirope de vainilla",
-      price: 5.49,
-      image:
-        "https://images.unsplash.com/photo-1561047029-3000c68339ca?w=500&h=500&fit=crop",
-      category: "cafeteria",
-    },
-    {
-      id: 10,
-      name: "Mocha Chocolate",
-      description: "Espresso, chocolate, leche y crema batida",
-      price: 5.99,
-      image:
-        "https://images.unsplash.com/photo-1607260550778-aa9d29444ce1?w=500&h=500&fit=crop",
-      badge: "Dulce",
-      category: "cafeteria",
-    },
-    {
-      id: 11,
-      name: "Frappé Caramelo",
-      description: "Café helado con caramelo, hielo y crema",
-      price: 6.49,
-      image:
-        "https://images.unsplash.com/photo-1562059390-a761a084768e?w=500&h=500&fit=crop",
-      badge: "Frío",
-      category: "cafeteria",
-    },
-    {
-      id: 12,
-      name: "Croissant",
-      description: "Croissant francés mantequilloso recién horneado",
-      price: 3.49,
-      image:
-        "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=500&h=500&fit=crop",
-      category: "cafeteria",
-    },
-    {
-      id: 13,
-      name: "Muffin de Arándanos",
-      description: "Muffin esponjoso con arándanos frescos",
-      price: 3.99,
-      image:
-        "https://images.unsplash.com/photo-1607958996333-41aef7caefaa?w=500&h=500&fit=crop",
-      category: "cafeteria",
-    },
-    {
-      id: 14,
-      name: "Cheesecake",
-      description: "Pastel de queso cremoso con base de galleta",
-      price: 4.99,
-      image:
-        "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?w=500&h=500&fit=crop",
-      badge: "Premium",
-      category: "cafeteria",
-    },
-  ];
+  // Cargar datos del backend al montar el componente
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        setLoading(true);
+        console.log("Intentando conectar a:", API_URL);
+
+        const [categoriasData, productosData] = await Promise.all([
+          api.getCategorias(),
+          api.getProductos(),
+        ]);
+
+        console.log("Categorías cargadas:", categoriasData);
+        console.log("Productos cargados:", productosData);
+
+        // Filtrar solo categorías activas
+        const categoriasActivas = categoriasData.filter((c) => c.activo);
+        setCategorias(categoriasActivas);
+
+        // Filtrar solo productos activos
+        const productosActivos = productosData.filter((p) => p.activo);
+        setProductos(productosActivos);
+
+        // Seleccionar la primera categoría por defecto
+        if (categoriasActivas.length > 0) {
+          setCategoriaActiva(categoriasActivas[0].id);
+        }
+
+        setError("");
+      } catch (err: any) {
+        console.error("Error detallado:", err);
+        let mensajeError = "Error al cargar los datos. ";
+
+        if (err.message.includes("Failed to fetch")) {
+          mensajeError += `No se puede conectar al servidor en ${API_URL}. Verifica que el backend esté corriendo.`;
+        } else {
+          mensajeError += err.message;
+        }
+
+        setError(mensajeError);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatos();
+  }, []);
+
+  // Filtrar productos por categoría activa
+  const productosFiltrados = productos.filter(
+    (p) =>
+      p.subcategoria?.categoria?.id === categoriaActiva &&
+      p.disponibilidad !== 0
+  );
 
   const getQuantity = (productId: number): number => {
     return quantities[productId] || 1;
@@ -179,7 +136,7 @@ const MenuCompleto = () => {
     }
   };
 
-  const addToCart = (product: Product): void => {
+  const addToCart = (product: Producto): void => {
     const quantity = getQuantity(product.id);
     const existingIndex = cart.findIndex((item) => item.id === product.id);
 
@@ -225,17 +182,81 @@ const MenuCompleto = () => {
 
   const getTotalPrice = (): string => {
     return cart
-      .reduce((total, item) => total + item.price * item.quantity, 0)
+      .reduce((total, item) => total + Number(item.precio) * item.quantity, 0)
       .toFixed(2);
   };
 
-  const currentProducts: Product[] =
-    activeTab === "comidas" ? comidas : cafeteria;
-  const bgGradient: string =
-    activeTab === "comidas"
-      ? "linear-gradient(135deg, #dbbdb1 0%, #f0e5de 100%)"
-      : "linear-gradient(135deg, #d4a574 0%, #e8d5c4 100%)";
-  const accentColor: string = activeTab === "comidas" ? "#d88c6f" : "#8b6f47";
+  const getImageUrl = (imagen: string | null): string => {
+    if (!imagen) {
+      return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop";
+    }
+    // Si la imagen ya es una URL completa, usarla directamente
+    if (imagen.startsWith("http")) {
+      return imagen;
+    }
+    // Si es una ruta relativa, construir la URL completa
+    return `${API_URL}${imagen}`;
+  };
+
+  const categoriaSeleccionada = categorias.find(
+    (c) => c.id === categoriaActiva
+  );
+  const accentColor = "#d88c6f";
+  const bgGradient = "linear-gradient(135deg, #dbbdb1 0%, #f0e5de 100%)";
+
+  if (loading) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: bgGradient }}
+      >
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-800 mx-auto mb-4"></div>
+          <p className="text-gray-700 text-lg font-semibold">
+            Cargando menú...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: bgGradient }}
+      >
+        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-md">
+          <div className="text-center">
+            <svg
+              className="w-16 h-16 text-red-500 mx-auto mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              Error al cargar
+            </h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 rounded-xl font-semibold text-white"
+              style={{ background: accentColor }}
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-5" style={{ background: bgGradient }}>
@@ -243,124 +264,141 @@ const MenuCompleto = () => {
         <div className="bg-white rounded-3xl shadow-xl p-8 mb-10">
           <div className="mb-6">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
-              {activeTab === "comidas" ? "Menú" : "Cafetería"}
+              {categoriaSeleccionada?.nombre || "Menú"}
             </h1>
-            <p className="text-gray-600"></p>
+            <p className="text-gray-600">
+              {categoriaSeleccionada?.descripcion || ""}
+            </p>
           </div>
 
-          <div className="flex gap-4">
-            <button
-              onClick={() => setActiveTab("comidas")}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                activeTab === "comidas"
-                  ? "text-white shadow-lg"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-              style={activeTab === "comidas" ? { background: "#d88c6f" } : {}}
-            >
-              Menú
-            </button>
-            <button
-              onClick={() => setActiveTab("cafeteria")}
-              className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
-                activeTab === "cafeteria"
-                  ? "text-white shadow-lg"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-              style={activeTab === "cafeteria" ? { background: "#8b6f47" } : {}}
-            >
-              Cafetería
-            </button>
+          <div className="flex gap-4 flex-wrap">
+            {categorias.map((categoria) => (
+              <button
+                key={categoria.id}
+                onClick={() => setCategoriaActiva(categoria.id)}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-300 ${
+                  categoriaActiva === categoria.id
+                    ? "text-white shadow-lg"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+                style={
+                  categoriaActiva === categoria.id
+                    ? { background: accentColor }
+                    : {}
+                }
+              >
+                {categoria.nombre}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {currentProducts.map((product) => (
-            <div
-              key={product.id}
-              className="bg-white rounded-3xl overflow-hidden shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
+        {productosFiltrados.length === 0 ? (
+          <div className="bg-white rounded-3xl shadow-xl p-12 text-center">
+            <svg
+              className="w-24 h-24 mx-auto mb-4 stroke-gray-300 fill-none"
+              strokeWidth="2"
+              viewBox="0 0 24 24"
             >
-              <div className="relative overflow-hidden h-56">
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
-                />
-                {product.badge && (
-                  <span
-                    className="absolute top-4 right-4 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-lg"
-                    style={{ background: accentColor }}
-                  >
-                    {product.badge}
-                  </span>
-                )}
-              </div>
-
-              <div className="p-6">
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                  {product.name}
-                </h3>
-                <p className="text-gray-600 text-sm mb-5 leading-relaxed">
-                  {product.description}
-                </p>
-
-                <div className="flex justify-between items-center mb-5">
-                  <span
-                    className="text-3xl font-bold"
-                    style={{ color: accentColor }}
-                  >
-                    Bs. {product.price}
-                  </span>
-                  <div
-                    className="flex items-center gap-3 rounded-full p-1"
-                    style={{
-                      background:
-                        activeTab === "comidas" ? "#dbbdb1" : "#d4a574",
-                    }}
-                  >
-                    <button
-                      onClick={() =>
-                        updateQuantity(product.id, getQuantity(product.id) - 1)
-                      }
-                      className="w-9 h-9 rounded-full bg-white flex items-center justify-center font-bold text-lg transition-all duration-300 hover:scale-105"
-                      style={{ color: accentColor }}
+              <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
+              <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
+            </svg>
+            <p className="text-gray-500 text-lg">
+              No hay productos disponibles en esta categoría
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {productosFiltrados.map((producto) => (
+              <div
+                key={producto.id}
+                className="bg-white rounded-3xl overflow-hidden shadow-xl transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl"
+              >
+                <div className="relative overflow-hidden h-56">
+                  <img
+                    src={getImageUrl(producto.imagen)}
+                    alt={producto.nombre}
+                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-110"
+                  />
+                  {producto.subcategoria && (
+                    <span
+                      className="absolute top-4 right-4 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-lg"
+                      style={{ background: accentColor }}
                     >
-                      −
-                    </button>
-                    <span className="font-semibold text-gray-800 w-8 text-center">
-                      {getQuantity(product.id)}
+                      {producto.subcategoria.nombre}
                     </span>
-                    <button
-                      onClick={() =>
-                        updateQuantity(product.id, getQuantity(product.id) + 1)
-                      }
-                      className="w-9 h-9 rounded-full bg-white flex items-center justify-center font-bold text-lg transition-all duration-300 hover:scale-105"
-                      style={{ color: accentColor }}
-                    >
-                      +
-                    </button>
-                  </div>
+                  )}
                 </div>
 
-                <button
-                  onClick={() => addToCart(product)}
-                  className="w-full text-white py-3.5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-lg"
-                  style={{ background: accentColor }}
-                >
-                  <svg
-                    className="w-5 h-5 stroke-white fill-none"
-                    strokeWidth="2"
-                    viewBox="0 0 24 24"
+                <div className="p-6">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                    {producto.nombre}
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-5 leading-relaxed">
+                    {producto.descripcion || "Delicioso producto"}
+                  </p>
+
+                  <div className="flex justify-between items-center mb-5">
+                    <span
+                      className="text-3xl font-bold"
+                      style={{ color: accentColor }}
+                    >
+                      Bs. {Number(producto.precio).toFixed(2)}
+                    </span>
+                    <div
+                      className="flex items-center gap-3 rounded-full p-1"
+                      style={{ background: "#dbbdb1" }}
+                    >
+                      <button
+                        onClick={() =>
+                          updateQuantity(
+                            producto.id,
+                            getQuantity(producto.id) - 1
+                          )
+                        }
+                        className="w-9 h-9 rounded-full bg-white flex items-center justify-center font-bold text-lg transition-all duration-300 hover:scale-105"
+                        style={{ color: accentColor }}
+                      >
+                        −
+                      </button>
+                      <span className="font-semibold text-gray-800 w-8 text-center">
+                        {getQuantity(producto.id)}
+                      </span>
+                      <button
+                        onClick={() =>
+                          updateQuantity(
+                            producto.id,
+                            getQuantity(producto.id) + 1
+                          )
+                        }
+                        className="w-9 h-9 rounded-full bg-white flex items-center justify-center font-bold text-lg transition-all duration-300 hover:scale-105"
+                        style={{ color: accentColor }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => addToCart(producto)}
+                    className="w-full text-white py-3.5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-lg"
+                    style={{ background: accentColor }}
                   >
-                    <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
-                    <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
-                  </svg>
-                  Agregar al Carrito
-                </button>
+                    <svg
+                      className="w-5 h-5 stroke-white fill-none"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
+                      <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
+                    </svg>
+                    Agregar al Carrito
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         {/* Carrito flotante */}
         <div
@@ -395,7 +433,8 @@ const MenuCompleto = () => {
         {/* Modal del carrito */}
         {showModal && (
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 flex items-center justify-center p-4 z-50"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
             onClick={() => setShowModal(false)}
           >
             <div
@@ -411,9 +450,7 @@ const MenuCompleto = () => {
                   onClick={() => setShowModal(false)}
                   className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 transition-colors"
                 >
-                  <span className="text-2xl items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors">
-                    ×
-                  </span>
+                  <span className="text-2xl text-gray-600">×</span>
                 </button>
               </div>
 
@@ -440,29 +477,24 @@ const MenuCompleto = () => {
                         className="flex gap-4 p-4 bg-gray-50 rounded-xl"
                       >
                         <img
-                          src={item.image}
-                          alt={item.name}
+                          src={getImageUrl(item.imagen)}
+                          alt={item.nombre}
                           className="w-20 h-20 object-cover rounded-lg"
                         />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <h3 className="font-bold text-gray-800">
-                              {item.name}
+                              {item.nombre}
                             </h3>
                             <span className="text-xs bg-gray-200 px-2 py-1 rounded">
-                              {item.category === "comidas" ? "🍕" : "☕"}
+                              {item.subcategoria?.nombre || ""}
                             </span>
                           </div>
                           <p
                             className="text-sm font-bold mb-2"
-                            style={{
-                              color:
-                                item.category === "comidas"
-                                  ? "#d88c6f"
-                                  : "#8b6f47",
-                            }}
+                            style={{ color: accentColor }}
                           >
-                            {item.price} Bs
+                            {Number(item.precio).toFixed(2)} Bs
                           </p>
                           <div className="flex items-center gap-2">
                             <button
@@ -470,12 +502,7 @@ const MenuCompleto = () => {
                                 updateCartQuantity(item.id, item.quantity - 1)
                               }
                               className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-sm font-bold hover:bg-gray-200"
-                              style={{
-                                color:
-                                  item.category === "comidas"
-                                    ? "#d88c6f"
-                                    : "#8b6f47",
-                              }}
+                              style={{ color: accentColor }}
                             >
                               −
                             </button>
@@ -487,12 +514,7 @@ const MenuCompleto = () => {
                                 updateCartQuantity(item.id, item.quantity + 1)
                               }
                               className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-sm font-bold hover:bg-gray-200"
-                              style={{
-                                color:
-                                  item.category === "comidas"
-                                    ? "#d88c6f"
-                                    : "#8b6f47",
-                              }}
+                              style={{ color: accentColor }}
                             >
                               +
                             </button>
@@ -507,14 +529,10 @@ const MenuCompleto = () => {
                           </button>
                           <p
                             className="font-bold text-lg"
-                            style={{
-                              color:
-                                item.category === "comidas"
-                                  ? "#d88c6f"
-                                  : "#8b6f47",
-                            }}
+                            style={{ color: accentColor }}
                           >
-                            Bs {(item.price * item.quantity).toFixed(2)}
+                            Bs{" "}
+                            {(Number(item.precio) * item.quantity).toFixed(2)}
                           </p>
                         </div>
                       </div>
@@ -534,19 +552,72 @@ const MenuCompleto = () => {
                     </span>
                     <span
                       className="text-3xl font-bold"
-                      style={{ color: "#d88c6f" }}
+                      style={{ color: accentColor }}
                     >
                       Bs {getTotalPrice()}
                     </span>
                   </div>
                   <button
+                    onClick={() => setShowQR(true)}
                     className="w-full text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:shadow-lg"
-                    style={{ background: "#d88c6f" }}
+                    style={{ background: accentColor }}
                   >
                     Proceder al Pago
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Modal del código QR */}
+        {showQR && (
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 z-50"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
+            onClick={() => setShowQR(false)}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="p-6 border-b border-gray-200 flex justify-between items-center"
+                style={{ background: "#dbbdb1" }}
+              >
+                <h2 className="text-2xl font-bold text-gray-800">
+                  Escanea para Pagar
+                </h2>
+                <button
+                  onClick={() => setShowQR(false)}
+                  className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 transition-colors"
+                >
+                  <span className="text-2xl text-gray-600">×</span>
+                </button>
+              </div>
+
+              <div className="p-8 text-center">
+                <div className="bg-white p-4 rounded-2xl shadow-inner mb-6 inline-block">
+                  {/* Aquí pones la URL de tu imagen QR */}
+                  <img
+                    src="/qr.jpeg"
+                    alt="Código QR de pago"
+                    className="w-64 h-64"
+                  />
+                </div>
+
+                <p className="text-gray-600 mb-2">Total a pagar:</p>
+                <p
+                  className="text-4xl font-bold mb-4"
+                  style={{ color: accentColor }}
+                >
+                  Bs {getTotalPrice()}
+                </p>
+
+                <p className="text-sm text-gray-500">
+                  Escanea este código con tu aplicación de pago
+                </p>
+              </div>
             </div>
           </div>
         )}

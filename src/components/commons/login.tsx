@@ -49,7 +49,7 @@ export default function AuthPage() {
     setError("");
 
     try {
-      const response = await axios.post("http://10.226.35.58:3000/auth/login", {
+      const response = await axios.post("http://localhost:3000/auth/login", {
         correo: correoLogin,
         contrasena: contrasenaLogin,
       });
@@ -107,7 +107,7 @@ export default function AuthPage() {
     }
 
     try {
-      const API_URL = "http://10.226.35.58:3000/usuarios/verificar-codigo";
+      const API_URL = "http://localhost:3000/usuarios/verificar-codigo";
 
       const response = await axios.post(API_URL, {
         correo: correoVerificacion,
@@ -157,7 +157,7 @@ export default function AuthPage() {
 
     try {
       setLoading(true);
-      await axios.post("http://10.226.35.58:3000/usuarios", {
+      await axios.post("http://localhost:3000/usuarios", {
         correo: formData.correo,
         contrasena: formData.contrasena,
         nombre: formData.nombre,

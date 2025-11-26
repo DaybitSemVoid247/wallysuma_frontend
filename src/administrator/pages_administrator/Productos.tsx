@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   HiOutlineTrash,
   HiOutlinePencil,
@@ -6,84 +6,141 @@ import {
   HiOutlineSearch,
   HiChevronDown,
   HiChevronUp,
+  HiOutlinePhotograph,
 } from "react-icons/hi";
+
+// Interfaces basadas en tu backend
+interface Categoria {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  activo: boolean;
+}
+
+interface Subcategoria {
+  id: number;
+  nombre: string;
+  descripcion?: string;
+  categoria: Categoria;
+  activo: boolean;
+}
 
 interface Producto {
   id: number;
   nombre: string;
-  categoria: string;
+  descripcion?: string;
   precio: number;
-  stock: number;
+  disponibilidad?: number;
+  imagen: string | null;
+  subcategoria: Subcategoria;
+  activo: boolean;
 }
 
-export const Productos = () => {
-  const [productos, setProductos] = useState<Producto[]>([
-    {
-      id: 1,
-      nombre: "Hamburguesa Clásica",
-      categoria: "Platos Principales",
-      precio: 35.0,
-      stock: 50,
-    },
-    {
-      id: 2,
-      nombre: "Pizza Margarita",
-      categoria: "Platos Principales",
-      precio: 45.0,
-      stock: 30,
-    },
-    {
-      id: 3,
-      nombre: "Ensalada César",
-      categoria: "Ensaladas",
-      precio: 25.0,
-      stock: 40,
-    },
-    {
-      id: 4,
-      nombre: "Pasta Carbonara",
-      categoria: "Platos Principales",
-      precio: 42.0,
-      stock: 35,
-    },
-    {
-      id: 5,
-      nombre: "Limonada Natural",
-      categoria: "Bebidas",
-      precio: 12.0,
-      stock: 100,
-    },
-    {
-      id: 6,
-      nombre: "Café Americano",
-      categoria: "Bebidas",
-      precio: 10.0,
-      stock: 80,
-    },
-    {
-      id: 7,
-      nombre: "Cheesecake",
-      categoria: "Postres",
-      precio: 28.0,
-      stock: 20,
-    },
-    {
-      id: 8,
-      nombre: "Brownie con Helado",
-      categoria: "Postres",
-      precio: 22.0,
-      stock: 25,
-    },
-  ]);
+// Configuración de la API
+const API_URL = "http://localhost:3000";
 
+// Servicio API
+const api = {
+  // Productos
+  async getProductos(): Promise<Producto[]> {
+    const response = await fetch(`${API_URL}/productos`);
+    if (!response.ok) throw new Error("Error al cargar productos");
+    return response.json();
+  },
+
+  async createProducto(data: any): Promise<Producto> {
+    console.log("🔗 POST", `${API_URL}/productos`, data);
+    const response = await fetch(`${API_URL}/productos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    const responseData = await response.json();
+    console.log("📥 Respuesta:", response.status, responseData);
+
+    if (!response.ok) {
+      throw new Error(
+        `Error al crear producto (${response.status}): ${JSON.stringify(
+          responseData
+        )}`
+      );
+    }
+    return responseData;
+  },
+
+  async updateProducto(id: number, data: any): Promise<Producto> {
+    console.log("🔗 PATCH", `${API_URL}/productos/${id}`, data);
+    const response = await fetch(`${API_URL}/productos/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    const responseData = await response.json();
+    console.log("📥 Respuesta:", response.status, responseData);
+
+    if (!response.ok) {
+      throw new Error(
+        `Error al actualizar producto (${response.status}): ${JSON.stringify(
+          responseData
+        )}`
+      );
+    }
+    return responseData;
+  },
+
+  async deleteProducto(id: number): Promise<void> {
+    console.log("🔗 DELETE", `${API_URL}/productos/${id}`);
+    const response = await fetch(`${API_URL}/productos/${id}`, {
+      method: "DELETE",
+    });
+
+    console.log("📥 Respuesta DELETE:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ Error al eliminar:", errorText);
+      throw new Error(`Error al eliminar producto (${response.status})`);
+    }
+  },
+
+  // Categorías
+  async getCategorias(): Promise<Categoria[]> {
+    const response = await fetch(`${API_URL}/categorias`);
+    if (!response.ok) throw new Error("Error al cargar categorías");
+    return response.json();
+  },
+
+  // Subcategorías
+  async getSubcategorias(): Promise<Subcategoria[]> {
+    const response = await fetch(`${API_URL}/subcategorias`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Error de subcategorías:", response.status, errorText);
+      throw new Error(`Error al cargar subcategorías (${response.status})`);
+    }
+    return response.json();
+  },
+};
+
+export const Productos = () => {
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [subcategorias, setSubcategorias] = useState<Subcategoria[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({
     nombre: "",
-    categoria: "",
+    descripcion: "",
     precio: "",
-    stock: "",
+    disponibilidad: "",
+    imagen: "",
+    subcategoria: "",
   });
+
+  const [imagenPreview, setImagenPreview] = useState<string>("");
 
   // Estados para filtros y paginación
   const [searchTerm, setSearchTerm] = useState("");
@@ -92,9 +149,89 @@ export const Productos = () => {
   const [showFilters, setShowFilters] = useState(true);
   const itemsPerPage = 5;
 
+  // Cargar datos iniciales
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const cargarDatos = async () => {
+    try {
+      setLoading(true);
+      console.log("🔍 Intentando conectar a:", API_URL);
+
+      const productosData = await api.getProductos();
+      const categoriasData = await api.getCategorias();
+
+      console.log("✅ Productos cargados:", productosData);
+      console.log("✅ Categorías cargadas:", categoriasData);
+
+      let subcategoriasData: Subcategoria[] = [];
+      try {
+        subcategoriasData = await api.getSubcategorias();
+        console.log("✅ Subcategorías cargadas:", subcategoriasData);
+      } catch (subError) {
+        console.warn(
+          "⚠️ No se pudieron cargar subcategorías del endpoint, extrayendo de productos..."
+        );
+        const subcatsMap = new Map<number, Subcategoria>();
+        productosData.forEach((p) => {
+          if (p.subcategoria && p.subcategoria.id) {
+            subcatsMap.set(p.subcategoria.id, p.subcategoria);
+          }
+        });
+        subcategoriasData = Array.from(subcatsMap.values());
+        console.log(
+          "✅ Subcategorías extraídas de productos:",
+          subcategoriasData
+        );
+      }
+
+      setProductos(
+        productosData.map((p) => ({
+          ...p,
+          precio: Number(p.precio),
+          disponibilidad: Number(p.disponibilidad || 0),
+        }))
+      );
+      setCategorias(categoriasData.filter((c) => c.activo));
+      setSubcategorias(subcategoriasData.filter((s) => s.activo));
+    } catch (error: any) {
+      console.error("❌ Error detallado:", error);
+      console.error("❌ URL intentada:", API_URL);
+
+      let mensaje = "Error al cargar los datos. ";
+
+      if (error.message.includes("Failed to fetch")) {
+        mensaje += `\n\n🔴 No se puede conectar a ${API_URL}\n\n`;
+        mensaje += "Posibles causas:\n";
+        mensaje += "1. El backend no está corriendo\n";
+        mensaje += "2. La URL es incorrecta\n";
+        mensaje += "3. CORS no está habilitado en el backend";
+      } else if (error.message.includes("404")) {
+        mensaje += `\n\n🔴 Endpoint no encontrado (404)\n\n`;
+        mensaje +=
+          "Verifica que las rutas /productos, /categorias y /subcategorias existan";
+      } else {
+        mensaje += error.message;
+      }
+
+      alert(mensaje);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAdd = () => {
     setEditingId(null);
-    setForm({ nombre: "", categoria: "", precio: "", stock: "" });
+    setForm({
+      nombre: "",
+      descripcion: "",
+      precio: "",
+      disponibilidad: "",
+      imagen: "",
+      subcategoria: "",
+    });
+    setImagenPreview("");
     setShowModal(true);
   };
 
@@ -102,37 +239,107 @@ export const Productos = () => {
     setEditingId(producto.id);
     setForm({
       nombre: producto.nombre,
-      categoria: producto.categoria,
+      descripcion: producto.descripcion || "",
       precio: producto.precio.toString(),
-      stock: producto.stock.toString(),
+      disponibilidad: (producto.disponibilidad || 0).toString(),
+      imagen: producto.imagen || "",
+      subcategoria: producto.subcategoria.id.toString(),
     });
+    setImagenPreview(producto.imagen || "");
     setShowModal(true);
   };
 
-  const handleDelete = (id: number) => {
-    setProductos(productos.filter((p) => p.id !== id));
+  const handleDelete = async (id: number) => {
+    if (!confirm("¿Estás seguro de eliminar este producto?")) return;
+
+    try {
+      await api.deleteProducto(id);
+      await cargarDatos();
+      alert("Producto eliminado correctamente");
+    } catch (error) {
+      console.error("Error al eliminar:", error);
+      alert("Error al eliminar el producto");
+    }
   };
 
-  const handleSave = () => {
-    if (!form.nombre || !form.categoria || !form.precio || !form.stock) return;
+  const handleImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        alert("Por favor selecciona un archivo de imagen válido");
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        alert("La imagen no debe superar los 5MB");
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        setImagenPreview(base64String);
+        setForm({ ...form, imagen: base64String });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = async () => {
+    if (
+      !form.nombre ||
+      !form.precio ||
+      !form.disponibilidad ||
+      !form.subcategoria
+    ) {
+      alert("Por favor completa todos los campos obligatorios");
+      return;
+    }
 
     const productoData = {
       nombre: form.nombre,
-      categoria: form.categoria,
+      descripcion: form.descripcion || null,
       precio: parseFloat(form.precio),
-      stock: parseInt(form.stock),
+      disponibilidad: parseInt(form.disponibilidad),
+      imagen: form.imagen || null,
+      subcategoria: parseInt(form.subcategoria),
     };
 
-    if (editingId) {
-      setProductos(
-        productos.map((p) =>
-          p.id === editingId ? { ...p, ...productoData } : p
-        )
-      );
-    } else {
-      setProductos([...productos, { id: Date.now(), ...productoData }]);
+    console.log("📤 Enviando datos:", productoData);
+
+    try {
+      if (editingId) {
+        console.log("✏️ Actualizando producto ID:", editingId);
+        const response = await api.updateProducto(editingId, productoData);
+        console.log("✅ Respuesta del servidor:", response);
+        alert("Producto actualizado correctamente");
+      } else {
+        console.log("➕ Creando nuevo producto");
+        const response = await api.createProducto(productoData);
+        console.log("✅ Respuesta del servidor:", response);
+        alert("Producto creado correctamente");
+      }
+      await cargarDatos();
+      setShowModal(false);
+    } catch (error: any) {
+      console.error("❌ Error completo:", error);
+      console.error("❌ Datos que se intentaron enviar:", productoData);
+
+      let mensaje = "Error al guardar el producto.\n\n";
+
+      if (error.message.includes("400")) {
+        mensaje +=
+          "Los datos enviados no son válidos.\nVerifica que todos los campos estén correctos.";
+      } else if (error.message.includes("404")) {
+        mensaje += "El endpoint no existe.\nVerifica la URL del backend.";
+      } else if (error.message.includes("500")) {
+        mensaje += "Error interno del servidor.\nRevisa los logs del backend.";
+      } else {
+        mensaje += error.message;
+      }
+
+      alert(mensaje);
     }
-    setShowModal(false);
   };
 
   // Filtrar productos
@@ -141,7 +348,8 @@ export const Productos = () => {
       .toLowerCase()
       .includes(searchTerm.toLowerCase());
     const matchCategory =
-      categoryFilter === "" || producto.categoria === categoryFilter;
+      categoryFilter === "" ||
+      producto.subcategoria?.categoria?.id === parseInt(categoryFilter);
     return matchSearch && matchCategory;
   });
 
@@ -151,7 +359,6 @@ export const Productos = () => {
   const endIndex = startIndex + itemsPerPage;
   const productosActuales = productosFiltrados.slice(startIndex, endIndex);
 
-  // Resetear página cuando cambian los filtros
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
@@ -161,6 +368,17 @@ export const Productos = () => {
     setCategoryFilter(value);
     setCurrentPage(1);
   };
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-800 mx-auto mb-4"></div>
+          <p className="text-gray-700 text-lg">Cargando productos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -223,11 +441,11 @@ export const Productos = () => {
               className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
             >
               <option value="">Todas las categorías</option>
-              <option value="Platos Principales">Platos Principales</option>
-              <option value="Entradas">Entradas</option>
-              <option value="Ensaladas">Ensaladas</option>
-              <option value="Bebidas">Bebidas</option>
-              <option value="Postres">Postres</option>
+              {categorias.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.nombre}
+                </option>
+              ))}
             </select>
           </div>
         </div>
@@ -240,6 +458,7 @@ export const Productos = () => {
             <tr>
               <th className="px-6 py-3">Nombre</th>
               <th className="px-6 py-3">Categoría</th>
+              <th className="px-6 py-3">Subcategoría</th>
               <th className="px-6 py-3">Precio</th>
               <th className="px-6 py-3">Stock</th>
               <th className="px-6 py-3 text-center">Acciones</th>
@@ -255,13 +474,21 @@ export const Productos = () => {
                   <td className="px-6 py-3 font-medium">{producto.nombre}</td>
                   <td className="px-6 py-3">
                     <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                      {producto.categoria}
+                      {producto.subcategoria?.categoria?.nombre ||
+                        "Sin categoría"}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3">
+                    <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded">
+                      {producto.subcategoria?.nombre || "Sin subcategoría"}
                     </span>
                   </td>
                   <td className="px-6 py-3 font-semibold">
-                    Bs. {producto.precio.toFixed(2)}
+                    Bs. {Number(producto.precio).toFixed(2)}
                   </td>
-                  <td className="px-6 py-3">{producto.stock} unidades</td>
+                  <td className="px-6 py-3">
+                    {producto.disponibilidad || 0} unidades
+                  </td>
                   <td className="px-6 py-3 text-center">
                     <button
                       onClick={() => handleEdit(producto)}
@@ -283,7 +510,7 @@ export const Productos = () => {
             ) : (
               <tr>
                 <td
-                  colSpan={5}
+                  colSpan={6}
                   className="px-6 py-8 text-center text-slate-500"
                 >
                   No se encontraron productos
@@ -344,7 +571,7 @@ export const Productos = () => {
           style={{ backgroundColor: "rgba(0, 0, 0, 0.4)" }}
         >
           <div
-            className="rounded-lg p-6 w-full max-w-md border-2 border-slate-300 shadow-2xl"
+            className="rounded-lg p-6 w-full max-w-md border-2 border-slate-300 shadow-2xl max-h-[90vh] overflow-y-auto"
             style={{
               backgroundColor: "rgba(255, 255, 255, 0.9)",
               backdropFilter: "blur(8px)",
@@ -370,21 +597,42 @@ export const Productos = () => {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Categoría
+                  Descripción
+                </label>
+                <textarea
+                  placeholder="Descripción del producto..."
+                  value={form.descripcion}
+                  onChange={(e) =>
+                    setForm({ ...form, descripcion: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Subcategoría
                 </label>
                 <select
-                  value={form.categoria}
+                  value={form.subcategoria}
                   onChange={(e) =>
-                    setForm({ ...form, categoria: e.target.value })
+                    setForm({ ...form, subcategoria: e.target.value })
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white"
                 >
-                  <option value="">Seleccionar categoría</option>
-                  <option value="Platos Principales">Platos Principales</option>
-                  <option value="Entradas">Entradas</option>
-                  <option value="Ensaladas">Ensaladas</option>
-                  <option value="Bebidas">Bebidas</option>
-                  <option value="Postres">Postres</option>
+                  <option value="">Seleccionar subcategoría</option>
+                  {categorias.map((cat) => (
+                    <optgroup key={cat.id} label={cat.nombre}>
+                      {subcategorias
+                        .filter((sub) => sub.categoria.id === cat.id)
+                        .map((sub) => (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.nombre}
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
 
@@ -409,10 +657,52 @@ export const Productos = () => {
                 <input
                   type="number"
                   placeholder="0"
-                  value={form.stock}
-                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                  value={form.disponibilidad}
+                  onChange={(e) =>
+                    setForm({ ...form, disponibilidad: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Imagen del producto
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImagenChange}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Formatos: JPG, PNG, GIF (máx. 5MB)
+                </p>
+                {imagenPreview && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium text-slate-700 mb-2">
+                      Vista previa:
+                    </p>
+                    <div className="relative">
+                      <img
+                        src={imagenPreview}
+                        alt="Preview"
+                        className="w-full h-48 object-cover rounded-lg border-2 border-slate-300"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImagenPreview("");
+                          setForm({ ...form, imagen: "" });
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition shadow-lg"
+                        title="Eliminar imagen"
+                      >
+                        <HiOutlineTrash size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
