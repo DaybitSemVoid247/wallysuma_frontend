@@ -34,7 +34,7 @@ interface CartItem extends Producto {
 type Quantities = Record<number, number>;
 
 // Configuración de la API
-const API_URL = "http://localhost:3000"; // Cambia esto por tu URL del backend
+const API_URL = "http://localhost:3000";
 
 // Servicio API
 const api = {
@@ -44,8 +44,9 @@ const api = {
     return response.json();
   },
 
-  async getProductos(): Promise<Producto[]> {
-    const response = await fetch(`${API_URL}/productos`);
+  // 🆕 Usar endpoint de productos activos
+  async getProductosActivos(): Promise<Producto[]> {
+    const response = await fetch(`${API_URL}/productos/activos`);
     if (!response.ok) throw new Error("Error al cargar productos");
     return response.json();
   },
@@ -78,21 +79,21 @@ const MenuCompleto = () => {
         setLoading(true);
         console.log("Intentando conectar a:", API_URL);
 
+        // 🆕 Usar el endpoint de productos activos
         const [categoriasData, productosData] = await Promise.all([
           api.getCategorias(),
-          api.getProductos(),
+          api.getProductosActivos(), // 🆕 Cambio aquí
         ]);
 
         console.log("Categorías cargadas:", categoriasData);
-        console.log("Productos cargados:", productosData);
+        console.log("Productos activos cargados:", productosData);
 
         // Filtrar solo categorías activas
         const categoriasActivas = categoriasData.filter((c) => c.activo);
         setCategorias(categoriasActivas);
 
-        // Filtrar solo productos activos
-        const productosActivos = productosData.filter((p) => p.activo);
-        setProductos(productosActivos);
+        // Ya vienen solo productos activos del endpoint
+        setProductos(productosData);
 
         // Seleccionar la primera categoría por defecto
         if (categoriasActivas.length > 0) {
@@ -190,12 +191,15 @@ const MenuCompleto = () => {
     if (!imagen) {
       return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop";
     }
-    // Si la imagen ya es una URL completa, usarla directamente
+
     if (imagen.startsWith("http")) {
       return imagen;
     }
-    // Si es una ruta relativa, construir la URL completa
-    return `${API_URL}${imagen}`;
+
+    // Normalizar: remover /uploads/ si existe
+    const filename = imagen.replace(/^\/uploads\/productos\//, "");
+
+    return `${API_URL}/uploads/productos/${filename}`;
   };
 
   const categoriaSeleccionada = categorias.find(
@@ -598,7 +602,6 @@ const MenuCompleto = () => {
 
               <div className="p-8 text-center">
                 <div className="bg-white p-4 rounded-2xl shadow-inner mb-6 inline-block">
-                  {/* Aquí pones la URL de tu imagen QR */}
                   <img
                     src="/qr.jpeg"
                     alt="Código QR de pago"

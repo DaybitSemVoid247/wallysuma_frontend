@@ -105,6 +105,28 @@ const api = {
     }
   },
 
+  // 🆕 Cambiar estado activo/inactivo
+  async toggleEstado(id: number, activo: boolean): Promise<Producto> {
+    console.log("🔗 PATCH", `${API_URL}/productos/${id}/estado`, { activo });
+    const response = await fetch(`${API_URL}/productos/${id}/estado`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ activo }),
+    });
+
+    const responseData = await response.json();
+    console.log("📥 Respuesta toggle estado:", response.status, responseData);
+
+    if (!response.ok) {
+      throw new Error(
+        `Error al cambiar estado (${response.status}): ${JSON.stringify(
+          responseData
+        )}`
+      );
+    }
+    return responseData;
+  },
+
   // Categorías
   async getCategorias(): Promise<Categoria[]> {
     const response = await fetch(`${API_URL}/categorias`);
@@ -145,6 +167,7 @@ export const Productos = () => {
   // Estados para filtros y paginación
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
+  const [estadoFilter, setEstadoFilter] = useState(""); // 🆕
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(true);
   const itemsPerPage = 5;
@@ -221,6 +244,20 @@ export const Productos = () => {
     }
   };
 
+  // 🆕 Función para cambiar estado
+  const handleToggleEstado = async (id: number, nuevoEstado: boolean) => {
+    try {
+      await api.toggleEstado(id, nuevoEstado);
+      await cargarDatos();
+      alert(
+        `Producto ${nuevoEstado ? "activado" : "desactivado"} correctamente`
+      );
+    } catch (error) {
+      console.error("Error al cambiar estado:", error);
+      alert("Error al cambiar el estado del producto");
+    }
+  };
+
   const handleAdd = () => {
     setEditingId(null);
     setForm({
@@ -250,39 +287,36 @@ export const Productos = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de eliminar este producto?")) return;
+    if (!confirm("¿Estás seguro de desactivar este producto?")) return;
 
     try {
       await api.deleteProducto(id);
       await cargarDatos();
-      alert("Producto eliminado correctamente");
+      alert("Producto desactivado correctamente");
     } catch (error) {
       console.error("Error al eliminar:", error);
       alert("Error al eliminar el producto");
     }
   };
 
+  const [imagenFile, setImagenFile] = useState<File | null>(null);
+
   const handleImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        alert("Por favor selecciona un archivo de imagen válido");
-        return;
-      }
+    if (!file) return;
 
-      if (file.size > 5 * 1024 * 1024) {
-        alert("La imagen no debe superar los 5MB");
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result as string;
-        setImagenPreview(base64String);
-        setForm({ ...form, imagen: base64String });
-      };
-      reader.readAsDataURL(file);
+    if (!file.type.startsWith("image/")) {
+      alert("Selecciona una imagen válida");
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("La imagen no debe superar los 5MB");
+      return;
+    }
+
+    setImagenFile(file);
+    setImagenPreview(URL.createObjectURL(file));
   };
 
   const handleSave = async () => {
@@ -296,53 +330,47 @@ export const Productos = () => {
       return;
     }
 
-    const productoData = {
-      nombre: form.nombre,
-      descripcion: form.descripcion || null,
-      precio: parseFloat(form.precio),
-      disponibilidad: parseInt(form.disponibilidad),
-      imagen: form.imagen || null,
-      subcategoria: parseInt(form.subcategoria),
-    };
+    const formData = new FormData();
+    formData.append("nombre", form.nombre);
+    formData.append("descripcion", form.descripcion);
+    formData.append("precio", form.precio);
+    formData.append("disponibilidad", form.disponibilidad);
+    formData.append("subcategoria", form.subcategoria);
 
-    console.log("📤 Enviando datos:", productoData);
+    if (imagenFile) {
+      formData.append("imagen", imagenFile);
+    }
 
     try {
-      if (editingId) {
-        console.log("✏️ Actualizando producto ID:", editingId);
-        const response = await api.updateProducto(editingId, productoData);
-        console.log("✅ Respuesta del servidor:", response);
-        alert("Producto actualizado correctamente");
-      } else {
-        console.log("➕ Creando nuevo producto");
-        const response = await api.createProducto(productoData);
-        console.log("✅ Respuesta del servidor:", response);
-        alert("Producto creado correctamente");
-      }
+      const url = editingId
+        ? `${API_URL}/productos/${editingId}`
+        : `${API_URL}/productos/upload`;
+
+      const method = editingId ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log("Servidor responde:", data);
+
+      if (!response.ok) throw new Error("Error en el servidor");
+
+      alert(editingId ? "Producto actualizado" : "Producto creado");
+
       await cargarDatos();
       setShowModal(false);
-    } catch (error: any) {
-      console.error("❌ Error completo:", error);
-      console.error("❌ Datos que se intentaron enviar:", productoData);
-
-      let mensaje = "Error al guardar el producto.\n\n";
-
-      if (error.message.includes("400")) {
-        mensaje +=
-          "Los datos enviados no son válidos.\nVerifica que todos los campos estén correctos.";
-      } else if (error.message.includes("404")) {
-        mensaje += "El endpoint no existe.\nVerifica la URL del backend.";
-      } else if (error.message.includes("500")) {
-        mensaje += "Error interno del servidor.\nRevisa los logs del backend.";
-      } else {
-        mensaje += error.message;
-      }
-
-      alert(mensaje);
+      setImagenFile(null);
+      setImagenPreview("");
+    } catch (err) {
+      console.error(err);
+      alert("Error al guardar el producto");
     }
   };
 
-  // Filtrar productos
+  // 🆕 Filtrar productos con estado
   const productosFiltrados = productos.filter((producto) => {
     const matchSearch = producto.nombre
       .toLowerCase()
@@ -350,7 +378,13 @@ export const Productos = () => {
     const matchCategory =
       categoryFilter === "" ||
       producto.subcategoria?.categoria?.id === parseInt(categoryFilter);
-    return matchSearch && matchCategory;
+    const matchEstado =
+      estadoFilter === ""
+        ? true
+        : estadoFilter === "activo"
+        ? producto.activo
+        : !producto.activo;
+    return matchSearch && matchCategory && matchEstado;
   });
 
   // Paginación
@@ -367,6 +401,25 @@ export const Productos = () => {
   const handleCategoryChange = (value: string) => {
     setCategoryFilter(value);
     setCurrentPage(1);
+  };
+
+  // 🆕 Handler para el filtro de estado
+  const handleEstadoChange = (value: string) => {
+    setEstadoFilter(value);
+    setCurrentPage(1);
+  };
+
+  const getImageUrl = (imagen: string | null): string => {
+    if (!imagen) {
+      return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop";
+    }
+
+    if (imagen.startsWith("http")) {
+      return imagen;
+    }
+
+    const filename = imagen.replace(/^\/uploads\/productos\//, "");
+    return `${API_URL}/uploads/productos/${filename}`;
   };
 
   if (loading) {
@@ -418,7 +471,7 @@ export const Productos = () => {
       {/* Filtros colapsables */}
       {showFilters && (
         <div className="mb-6 bg-white shadow-md rounded-lg p-4 transition-all duration-300">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Buscador */}
             <div className="relative">
               <HiOutlineSearch
@@ -447,6 +500,17 @@ export const Productos = () => {
                 </option>
               ))}
             </select>
+
+            {/* 🆕 Filtro por estado */}
+            <select
+              value={estadoFilter}
+              onChange={(e) => handleEstadoChange(e.target.value)}
+              className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            >
+              <option value="">Todos los estados</option>
+              <option value="activo">Activos</option>
+              <option value="inactivo">Inactivos</option>
+            </select>
           </div>
         </div>
       )}
@@ -461,6 +525,7 @@ export const Productos = () => {
               <th className="px-6 py-3">Subcategoría</th>
               <th className="px-6 py-3">Precio</th>
               <th className="px-6 py-3">Stock</th>
+              <th className="px-6 py-3">Estado</th> {/* 🆕 */}
               <th className="px-6 py-3 text-center">Acciones</th>
             </tr>
           </thead>
@@ -489,6 +554,21 @@ export const Productos = () => {
                   <td className="px-6 py-3">
                     {producto.disponibilidad || 0} unidades
                   </td>
+                  {/* 🆕 Columna de estado con toggle */}
+                  <td className="px-6 py-3">
+                    <button
+                      onClick={() =>
+                        handleToggleEstado(producto.id, !producto.activo)
+                      }
+                      className={`px-3 py-1 rounded-full text-xs font-semibold transition ${
+                        producto.activo
+                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                          : "bg-red-100 text-red-700 hover:bg-red-200"
+                      }`}
+                    >
+                      {producto.activo ? "Activo" : "Inactivo"}
+                    </button>
+                  </td>
                   <td className="px-6 py-3 text-center">
                     <button
                       onClick={() => handleEdit(producto)}
@@ -510,7 +590,7 @@ export const Productos = () => {
             ) : (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-6 py-8 text-center text-slate-500"
                 >
                   No se encontraron productos
@@ -675,9 +755,6 @@ export const Productos = () => {
                   onChange={handleImagenChange}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 bg-white file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-cyan-50 file:text-cyan-700 hover:file:bg-cyan-100"
                 />
-                <p className="text-xs text-slate-500 mt-1">
-                  Formatos: JPG, PNG, GIF (máx. 5MB)
-                </p>
                 {imagenPreview && (
                   <div className="mt-3">
                     <p className="text-sm font-medium text-slate-700 mb-2">
@@ -693,6 +770,7 @@ export const Productos = () => {
                         type="button"
                         onClick={() => {
                           setImagenPreview("");
+                          setImagenFile(null);
                           setForm({ ...form, imagen: "" });
                         }}
                         className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition shadow-lg"
