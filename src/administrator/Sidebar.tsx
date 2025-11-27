@@ -32,6 +32,12 @@ const sidebarLinks = [
     href: "/administrator/pedidos",
     icon: HiOutlineShoppingBag,
   },
+  {
+    id: 5,
+    title: "Pedidos Cajero",
+    href: "/administrator/cajero",
+    icon: HiOutlineShoppingBag,
+  },
 ];
 
 export const Sidebar = () => {
