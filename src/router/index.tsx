@@ -6,7 +6,7 @@ import { Sidebar } from "../administrator/Sidebar";
 import { Productos } from "../administrator/pages_administrator/Productos";
 import { Estadisticas } from "../administrator/pages_administrator/estadisticas";
 import { Pedidos } from "../administrator/pages_administrator/pedidos";
-
+import { CajeroPedidos } from "../administrator/cajero/cajero";
 import InicioSesionUsuarios from "../components/commons/login";
 import RegistroUsuarios from "../components/commons/form";
 import Categorias from "../pages/categorias";
@@ -43,7 +43,18 @@ export const router = createBrowserRouter([
           { path: "usuarios", element: <Usuario /> },
           { path: "estadisticas", element: <Estadisticas /> },
           { path: "pedidos", element: <Pedidos /> },
+          { path: "cajero", element: <CajeroPedidos /> },
         ],
+      },
+    ],
+  },
+  {
+    path: "/cajero",
+    element: <ProtectedRoute roles={["Cajero"]} />,
+    children: [
+      {
+        index: true,
+        element: <CajeroPedidos />,
       },
     ],
   },
