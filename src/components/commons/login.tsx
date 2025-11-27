@@ -65,6 +65,7 @@ export default function AuthPage() {
         Administrador: "/administrator/usuarios",
         Usuario: "/",
         Cocinero: "/pedidos",
+        Cajero: "/cajero"
       };
 
       // Buscar el primer rol que tenga una ruta asignada

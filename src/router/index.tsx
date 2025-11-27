@@ -52,6 +52,7 @@ export const router = createBrowserRouter([
     path: "/cajero",
     element: <ProtectedRoute roles={["Cajero"]} />,
     children: [
+      { path: "sidebar", element: <Sidebar /> },
       {
         index: true,
         element: <CajeroPedidos />,
