@@ -1,18 +1,14 @@
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import {
-  HiOutlineSearch,
-  HiOutlineUser,
-} from "react-icons/hi";
+import { HiOutlineSearch, HiOutlineUser } from "react-icons/hi";
 import { FaBarsStaggered } from "react-icons/fa6";
 import { navbarLinks } from "../../constants/links";
 import { Logo } from "./Logo";
 
 export const Navbar = () => {
   const navigate = useNavigate();
-  const location = useLocation();   // ← 🔥 detecta la ruta actual
+  const location = useLocation();
 
-  // 🔥 Si estamos en /administrator o subrutas, NO mostrar navbar
   if (location.pathname.startsWith("/administrator")) {
     return null;
   }

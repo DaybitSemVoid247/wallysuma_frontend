@@ -10,6 +10,7 @@ import {
   HiOutlineQrcode,
   HiOutlineShoppingBag,
   HiOutlineHome,
+  HiOutlineExclamationCircle,
 } from "react-icons/hi";
 
 // Interfaces
@@ -38,6 +39,7 @@ interface Producto {
   descripcion?: string;
   precio: number;
   imagen: string | null;
+  disponibilidad: number; // ✅ Stock disponible
   subcategoria: Subcategoria;
   activo: boolean;
 }
@@ -47,6 +49,7 @@ interface ItemCarrito {
   nombre: string;
   precio: number;
   cantidad: number;
+  stockDisponible: number; // ✅ Guardamos el stock para validar
 }
 
 // Configuración de la API
@@ -88,7 +91,7 @@ const api = {
   },
 };
 
-export const CajeroPedidos = () => {
+export function CajeroPedidos() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
@@ -105,7 +108,7 @@ export const CajeroPedidos = () => {
   const [procesando, setProcesando] = useState(false);
   const [mensaje, setMensaje] = useState<{
     texto: string;
-    tipo: "success" | "error";
+    tipo: "success" | "error" | "warning";
   } | null>(null);
   const [mostrarSelectorUsuario, setMostrarSelectorUsuario] = useState(false);
   const [showQR, setShowQR] = useState(false);
@@ -134,6 +137,7 @@ export const CajeroPedidos = () => {
           .map((p) => ({
             ...p,
             precio: Number(p.precio),
+            disponibilidad: Number(p.disponibilidad || 0),
           }))
       );
       setUsuarios(usuariosData);
@@ -148,12 +152,28 @@ export const CajeroPedidos = () => {
     }
   };
 
+  // ✅ VALIDACIÓN DE STOCK al agregar al carrito
   const agregarAlCarrito = (producto: Producto) => {
+    // Validar que el producto tenga stock
+    if (producto.disponibilidad <= 0) {
+      mostrarMensaje(`❌ ${producto.nombre} está agotado (sin stock)`, "error");
+      return;
+    }
+
     const itemExistente = carrito.find(
       (item) => item.productoId === producto.id
     );
 
     if (itemExistente) {
+      // Validar que no exceda el stock disponible
+      if (itemExistente.cantidad >= producto.disponibilidad) {
+        mostrarMensaje(
+          `⚠️ Stock insuficiente para ${producto.nombre}. Solo quedan ${producto.disponibilidad} unidades`,
+          "warning"
+        );
+        return;
+      }
+
       setCarrito(
         carrito.map((item) =>
           item.productoId === producto.id
@@ -169,14 +189,28 @@ export const CajeroPedidos = () => {
           nombre: producto.nombre,
           precio: producto.precio,
           cantidad: 1,
+          stockDisponible: producto.disponibilidad,
         },
       ]);
     }
   };
 
+  // ✅ VALIDACIÓN al actualizar cantidad
   const actualizarCantidad = (productoId: number, nuevaCantidad: number) => {
     if (nuevaCantidad <= 0) {
       eliminarDelCarrito(productoId);
+      return;
+    }
+
+    const item = carrito.find((i) => i.productoId === productoId);
+    if (!item) return;
+
+    // Validar que no exceda el stock
+    if (nuevaCantidad > item.stockDisponible) {
+      mostrarMensaje(
+        `⚠️ Stock insuficiente. Solo quedan ${item.stockDisponible} unidades de ${item.nombre}`,
+        "warning"
+      );
       return;
     }
 
@@ -241,8 +275,10 @@ export const CajeroPedidos = () => {
         `✅ Pedido ${response.datos?.numeroPedido || ""} creado exitosamente`,
         "success"
       );
-      setShowQR(false); // Cerrar modal QR si estaba abierto
+      setShowQR(false);
       limpiarFormulario();
+      // ✅ Recargar productos para actualizar stock
+      cargarDatos();
     } catch (error: any) {
       console.error("Error al crear pedido:", error);
       mostrarMensaje(error.message || "Error al crear el pedido", "error");
@@ -260,7 +296,10 @@ export const CajeroPedidos = () => {
     setMostrarSelectorUsuario(false);
   };
 
-  const mostrarMensaje = (texto: string, tipo: "success" | "error") => {
+  const mostrarMensaje = (
+    texto: string,
+    tipo: "success" | "error" | "warning"
+  ) => {
     setMensaje({ texto, tipo });
     setTimeout(() => setMensaje(null), 4000);
   };
@@ -285,6 +324,14 @@ export const CajeroPedidos = () => {
     }
     const filename = imagen.replace(/^\/uploads\/productos\//, "");
     return `${API_URL}/uploads/productos/${filename}`;
+  };
+
+  // ✅ Función para obtener el color del badge de stock
+  const getStockBadgeColor = (stock: number) => {
+    if (stock === 0) return "bg-red-600 text-white";
+    if (stock <= 5) return "bg-yellow-500 text-white";
+    if (stock <= 10) return "bg-orange-500 text-white";
+    return "bg-green-600 text-white";
   };
 
   if (loading) {
@@ -315,6 +362,8 @@ export const CajeroPedidos = () => {
             className={`mb-6 p-4 rounded-lg border-l-4 font-semibold ${
               mensaje.tipo === "success"
                 ? "bg-green-100 text-green-800 border-green-600"
+                : mensaje.tipo === "warning"
+                ? "bg-yellow-100 text-yellow-800 border-yellow-600"
                 : "bg-red-100 text-red-800 border-red-600"
             }`}
           >
@@ -406,29 +455,60 @@ export const CajeroPedidos = () => {
 
               {/* Grid de productos */}
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[500px] overflow-y-auto">
-                {productosFiltrados.map((producto) => (
-                  <div
-                    key={producto.id}
-                    onClick={() => agregarAlCarrito(producto)}
-                    className="border-2 border-gray-200 rounded-lg p-3 hover:shadow-lg cursor-pointer transition hover:border-cyan-600 bg-white"
-                  >
-                    <img
-                      src={getImageUrl(producto.imagen)}
-                      alt={producto.nombre}
-                      className="w-full h-32 object-cover rounded mb-2"
-                      onError={(e) => {
-                        e.currentTarget.src =
-                          "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop";
-                      }}
-                    />
-                    <h3 className="font-semibold text-gray-800 mb-1 text-sm">
-                      {producto.nombre}
-                    </h3>
-                    <p className="text-xl font-bold text-cyan-600">
-                      Bs. {producto.precio.toFixed(2)}
-                    </p>
-                  </div>
-                ))}
+                {productosFiltrados.map((producto) => {
+                  const cantidadEnCarrito =
+                    carrito.find((item) => item.productoId === producto.id)
+                      ?.cantidad || 0;
+                  const stockRestante =
+                    producto.disponibilidad - cantidadEnCarrito;
+
+                  return (
+                    <div
+                      key={producto.id}
+                      onClick={() => agregarAlCarrito(producto)}
+                      className={`border-2 rounded-lg p-3 transition relative ${
+                        producto.disponibilidad === 0
+                          ? "border-gray-300 bg-gray-100 cursor-not-allowed opacity-60"
+                          : "border-gray-200 hover:shadow-lg cursor-pointer hover:border-cyan-600 bg-white"
+                      }`}
+                    >
+                      {/* ✅ Badge de stock */}
+                      <div
+                        className={`absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold ${getStockBadgeColor(
+                          producto.disponibilidad
+                        )}`}
+                      >
+                        {producto.disponibilidad === 0
+                          ? "AGOTADO"
+                          : `Stock: ${producto.disponibilidad}`}
+                      </div>
+
+                      <img
+                        src={getImageUrl(producto.imagen)}
+                        alt={producto.nombre}
+                        className="w-full h-32 object-cover rounded mb-2"
+                        onError={(e) => {
+                          e.currentTarget.src =
+                            "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop";
+                        }}
+                      />
+                      <h3 className="font-semibold text-gray-800 mb-1 text-sm">
+                        {producto.nombre}
+                      </h3>
+                      <p className="text-xl font-bold text-cyan-600">
+                        Bs. {producto.precio.toFixed(2)}
+                      </p>
+
+                      {/* ✅ Mostrar cantidad en carrito si existe */}
+                      {cantidadEnCarrito > 0 && (
+                        <div className="mt-2 bg-cyan-100 text-cyan-800 text-xs font-bold px-2 py-1 rounded">
+                          En carrito: {cantidadEnCarrito} | Quedan:{" "}
+                          {stockRestante}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -459,6 +539,15 @@ export const CajeroPedidos = () => {
                         <p className="text-gray-600 text-sm">
                           Bs. {item.precio.toFixed(2)}
                         </p>
+                        {/* ✅ Alerta de stock bajo */}
+                        {item.stockDisponible - item.cantidad <= 3 && (
+                          <div className="flex items-center gap-1 text-orange-600 text-xs mt-1">
+                            <HiOutlineExclamationCircle size={14} />
+                            <span>
+                              Quedan {item.stockDisponible - item.cantidad}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         <button
@@ -482,7 +571,8 @@ export const CajeroPedidos = () => {
                               item.cantidad + 1
                             )
                           }
-                          className="p-1 bg-gray-200 rounded hover:bg-gray-300"
+                          disabled={item.cantidad >= item.stockDisponible}
+                          className="p-1 bg-gray-200 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         >
                           <HiOutlinePlus size={16} />
                         </button>
@@ -655,7 +745,6 @@ export const CajeroPedidos = () => {
                   Escanea este código con tu aplicación de pago
                 </p>
 
-                {/* Botón para confirmar pago */}
                 <button
                   onClick={procesarPedido}
                   disabled={procesando}
@@ -670,4 +759,4 @@ export const CajeroPedidos = () => {
       </div>
     </div>
   );
-};
+}
