@@ -11,3 +11,7 @@ Aplicación web desarrollada con **React**, **TypeScript** y **Vite**
 - **React Router** – Manejo de rutas y navegación en la app
 - **React Icons** – Iconos listos para usar
 - **ESLint + Prettier** – Para mantener código limpio y consistente
+
+libreria para lenguaje
+ npm install react-i18next i18next
+ 
