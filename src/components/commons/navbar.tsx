@@ -1,13 +1,16 @@
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import { HiOutlineSearch, HiOutlineUser } from "react-icons/hi";
+import { HiOutlineUser } from "react-icons/hi";
 import { FaBarsStaggered } from "react-icons/fa6";
+import { useTranslation } from 'react-i18next';
 import { navbarLinks } from "../../constants/links";
 import { Logo } from "./Logo";
+import { LanguageSelector } from "../LanguageSelector"; 
 
 export const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation(); 
 
   if (location.pathname.startsWith("/administrator")) {
     return null;
@@ -27,7 +30,6 @@ export const Navbar = () => {
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-
       if (currentScrollY < 10) {
         setIsVisible(true);
       } else if (currentScrollY > lastScrollY + 2 && currentScrollY > 2) {
@@ -35,15 +37,11 @@ export const Navbar = () => {
       } else if (currentScrollY < lastScrollY - 2) {
         setIsVisible(true);
       }
-
       setLastScrollY(currentScrollY);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => {
-      window.removeEventListener("scroll", handleScroll);
-    };
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
 
   const handleLogout = () => {
@@ -66,17 +64,17 @@ export const Navbar = () => {
             key={link.id}
             to={link.href}
             className={({ isActive }) =>
-              `${
-                isActive ? "text-[#9e4e2f] underline" : ""
-              } transition-all duration-300 font-medium hover:text-[#9e4e2f] hover:underline`
+              `${isActive ? "text-[#9e4e2f] underline" : ""} transition-all duration-300 font-medium hover:text-[#9e4e2f] hover:underline`
             }
           >
-            {link.title}
+            {t(link.title)}
           </NavLink>
         ))}
       </nav>
 
       <div className="flex gap-5 items-center">
+        <LanguageSelector /> {/* ← AGREGAR */}
+        
         {usuario ? (
           <div className="flex items-center gap-3">
             <div className="border-2 border-slate-700 w-9 h-9 rounded-full grid place-items-center text-lg font-bold bg-cyan-600 text-white">
@@ -90,7 +88,7 @@ export const Navbar = () => {
               onClick={handleLogout}
               className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 ml-2"
             >
-              Salir
+              {t('logout')}
             </button>
           </div>
         ) : (
