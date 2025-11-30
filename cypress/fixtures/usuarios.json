@@ -1,0 +1,50 @@
+{
+  "usuarioValido": {
+    "nombre": "Juan",
+    "apellidoPaterno": "Pérez",
+    "apellidoMaterno": "García",
+    "correo": "juan.perez@test.com",
+    "contrasena": "Test123456",
+    "rolesIds": [1]
+  },
+  "usuarioEditar": {
+    "nombre": "María",
+    "apellidoPaterno": "López",
+    "apellidoMaterno": "Martínez",
+    "correo": "maria.lopez@test.com",
+    "contrasena": "Test123456",
+    "rolesIds": [1]
+  },
+  "usuarioActualizado": {
+    "nombre": "María Actualizada",
+    "apellidoPaterno": "López Nuevo",
+    "apellidoMaterno": "Martínez Nuevo",
+    "correo": "maria.lopez.nuevo@test.com"
+  },
+  "usuariosMultiples": [
+    {
+      "nombre": "Carlos",
+      "apellidoPaterno": "Rodríguez",
+      "apellidoMaterno": "Sánchez",
+      "correo": "carlos.rodriguez@test.com",
+      "contrasena": "Test123456",
+      "rolesIds": [1]
+    },
+    {
+      "nombre": "Ana",
+      "apellidoPaterno": "Fernández",
+      "apellidoMaterno": "Gómez",
+      "correo": "ana.fernandez@test.com",
+      "contrasena": "Test123456",
+      "rolesIds": [2]
+    },
+    {
+      "nombre": "Pedro",
+      "apellidoPaterno": "Díaz",
+      "apellidoMaterno": "Ruiz",
+      "correo": "pedro.diaz@test.com",
+      "contrasena": "Test123456",
+      "rolesIds": [1, 2]
+    }
+  ]
+}

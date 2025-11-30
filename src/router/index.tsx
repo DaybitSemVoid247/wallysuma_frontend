@@ -8,7 +8,7 @@ import { Estadisticas } from "../administrator/pages_administrator/estadisticas"
 import { Pedidos } from "../administrator/pages_administrator/pedidos";
 
 import InicioSesionUsuarios from "../components/commons/login";
-import RegistroUsuarios from "../components/commons/form";
+import RegistroUsuarios from "../components/commons/login";
 import Categorias from "../pages/categorias";
 import Articulos from "../pages/articulos";
 import { LoginLayout } from "../layouts/LoginLayout";

@@ -1,0 +1,52 @@
+{
+  "productoValido": {
+    "nombre": "Hamburguesa de Prueba",
+    "categoria": "Platos Principales",
+    "precio": 35.50,
+    "stock": 100
+  },
+  "productoEditar": {
+    "nombre": "Pizza de Prueba",
+    "categoria": "Platos Principales",
+    "precio": 45.00,
+    "stock": 50
+  },
+  "productoActualizado": {
+    "nombre": "Pizza Actualizada",
+    "categoria": "Platos Principales",
+    "precio": 55.00,
+    "stock": 75
+  },
+  "productosMultiples": [
+    {
+      "nombre": "Ensalada de Prueba 1",
+      "categoria": "Ensaladas",
+      "precio": 25.00,
+      "stock": 40
+    },
+    {
+      "nombre": "Bebida de Prueba 1",
+      "categoria": "Bebidas",
+      "precio": 12.00,
+      "stock": 100
+    },
+    {
+      "nombre": "Postre de Prueba 1",
+      "categoria": "Postres",
+      "precio": 28.00,
+      "stock": 30
+    }
+  ],
+  "productoSinStock": {
+    "nombre": "Producto Sin Stock",
+    "categoria": "Bebidas",
+    "precio": 10.00,
+    "stock": 0
+  },
+  "productoPrecioAlto": {
+    "nombre": "Producto Premium",
+    "categoria": "Platos Principales",
+    "precio": 150.00,
+    "stock": 10
+  }
+}
