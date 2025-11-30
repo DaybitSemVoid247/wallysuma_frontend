@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from 'react-i18next';
 
 // Interfaces basadas en tu backend
 interface Categoria {
@@ -33,10 +34,8 @@ interface CartItem extends Producto {
 
 type Quantities = Record<number, number>;
 
-// Configuración de la API
 const API_URL = "http://localhost:3000";
 
-// Servicio API
 const api = {
   async getCategorias(): Promise<Categoria[]> {
     const response = await fetch(`${API_URL}/categorias`);
@@ -44,7 +43,6 @@ const api = {
     return response.json();
   },
 
-  // 🆕 Usar endpoint de productos activos
   async getProductosActivos(): Promise<Producto[]> {
     const response = await fetch(`${API_URL}/productos/activos`);
     if (!response.ok) throw new Error("Error al cargar productos");
@@ -59,43 +57,38 @@ const api = {
 };
 
 const MenuCompleto = () => {
+  const { t } = useTranslation();
+  
   const [cart, setCart] = useState<CartItem[]>([]);
   const [quantities, setQuantities] = useState<Quantities>({});
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showQR, setShowQR] = useState<boolean>(false);
   const [animatingItems, setAnimatingItems] = useState<number[]>([]);
 
-  // Estados para datos del backend
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [categoriaActiva, setCategoriaActiva] = useState<number | null>(null);
 
-  // Cargar datos del backend al montar el componente
   useEffect(() => {
     const cargarDatos = async () => {
       try {
         setLoading(true);
         console.log("Intentando conectar a:", API_URL);
 
-        // 🆕 Usar el endpoint de productos activos
         const [categoriasData, productosData] = await Promise.all([
           api.getCategorias(),
-          api.getProductosActivos(), // 🆕 Cambio aquí
+          api.getProductosActivos(),
         ]);
 
         console.log("Categorías cargadas:", categoriasData);
         console.log("Productos activos cargados:", productosData);
 
-        // Filtrar solo categorías activas
         const categoriasActivas = categoriasData.filter((c) => c.activo);
         setCategorias(categoriasActivas);
-
-        // Ya vienen solo productos activos del endpoint
         setProductos(productosData);
 
-        // Seleccionar la primera categoría por defecto
         if (categoriasActivas.length > 0) {
           setCategoriaActiva(categoriasActivas[0].id);
         }
@@ -103,24 +96,15 @@ const MenuCompleto = () => {
         setError("");
       } catch (err: any) {
         console.error("Error detallado:", err);
-        let mensajeError = "Error al cargar los datos. ";
-
-        if (err.message.includes("Failed to fetch")) {
-          mensajeError += `No se puede conectar al servidor en ${API_URL}. Verifica que el backend esté corriendo.`;
-        } else {
-          mensajeError += err.message;
-        }
-
-        setError(mensajeError);
+        setError(t('loadError') + ' ' + err.message);
       } finally {
         setLoading(false);
       }
     };
 
     cargarDatos();
-  }, []);
+  }, [t]);
 
-  // Filtrar productos por categoría activa
   const productosFiltrados = productos.filter(
     (p) =>
       p.subcategoria?.categoria?.id === categoriaActiva &&
@@ -154,7 +138,6 @@ const MenuCompleto = () => {
 
     setQuantities({ ...quantities, [product.id]: 1 });
 
-    // Animación
     setAnimatingItems([...animatingItems, product.id]);
     setTimeout(() => {
       setAnimatingItems((prev) => prev.filter((id) => id !== product.id));
@@ -196,9 +179,7 @@ const MenuCompleto = () => {
       return imagen;
     }
 
-    // Normalizar: remover /uploads/ si existe
     const filename = imagen.replace(/^\/uploads\/productos\//, "");
-
     return `${API_URL}/uploads/productos/${filename}`;
   };
 
@@ -217,7 +198,7 @@ const MenuCompleto = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-800 mx-auto mb-4"></div>
           <p className="text-gray-700 text-lg font-semibold">
-            Cargando menú...
+            {t('loading')}
           </p>
         </div>
       </div>
@@ -246,7 +227,7 @@ const MenuCompleto = () => {
               />
             </svg>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              Error al cargar
+              {t('errorTitle')}
             </h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <button
@@ -254,7 +235,7 @@ const MenuCompleto = () => {
               className="px-6 py-3 rounded-xl font-semibold text-white"
               style={{ background: accentColor }}
             >
-              Reintentar
+              {t('retry')}
             </button>
           </div>
         </div>
@@ -268,10 +249,10 @@ const MenuCompleto = () => {
         <div className="bg-white rounded-3xl shadow-xl p-8 mb-10">
           <div className="mb-6">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
-              {categoriaSeleccionada?.nombre || "Menú"}
+              {t('menu')}
             </h1>
             <p className="text-gray-600">
-              {categoriaSeleccionada?.descripcion || ""}
+              {t('menuDescription')}
             </p>
           </div>
 
@@ -308,7 +289,7 @@ const MenuCompleto = () => {
               <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
             </svg>
             <p className="text-gray-500 text-lg">
-              No hay productos disponibles en esta categoría
+              {t('noProducts')}
             </p>
           </div>
         ) : (
@@ -339,7 +320,7 @@ const MenuCompleto = () => {
                     {producto.nombre}
                   </h3>
                   <p className="text-gray-600 text-sm mb-5 leading-relaxed">
-                    {producto.descripcion || "Delicioso producto"}
+                    {producto.descripcion || t('deliciousProduct')}
                   </p>
 
                   <div className="flex justify-between items-center mb-5">
@@ -396,7 +377,7 @@ const MenuCompleto = () => {
                       <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
                       <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
                     </svg>
-                    Agregar al Carrito
+                    {t('addToCart')}
                   </button>
                 </div>
               </div>
@@ -449,7 +430,7 @@ const MenuCompleto = () => {
                 className="p-6 border-b border-gray-200 flex justify-between items-center"
                 style={{ background: "#dbbdb1" }}
               >
-                <h2 className="text-2xl font-bold text-gray-800">Tu Carrito</h2>
+                <h2 className="text-2xl font-bold text-gray-800">{t('yourCart')}</h2>
                 <button
                   onClick={() => setShowModal(false)}
                   className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 transition-colors"
@@ -470,7 +451,7 @@ const MenuCompleto = () => {
                       <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
                     </svg>
                     <p className="text-gray-500 text-lg">
-                      Tu carrito está vacío
+                      {t('emptyCart')}
                     </p>
                   </div>
                 ) : (
@@ -529,7 +510,7 @@ const MenuCompleto = () => {
                             onClick={() => removeFromCart(item.id)}
                             className="text-red-500 hover:text-red-700 font-bold text-sm"
                           >
-                            Eliminar
+                            {t('remove')}
                           </button>
                           <p
                             className="font-bold text-lg"
@@ -552,7 +533,7 @@ const MenuCompleto = () => {
                 >
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-xl font-bold text-gray-800">
-                      Total:
+                      {t('total')}:
                     </span>
                     <span
                       className="text-3xl font-bold"
@@ -566,7 +547,7 @@ const MenuCompleto = () => {
                     className="w-full text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:shadow-lg"
                     style={{ background: accentColor }}
                   >
-                    Proceder al Pago
+                    {t('proceedPayment')}
                   </button>
                 </div>
               )}
@@ -590,7 +571,7 @@ const MenuCompleto = () => {
                 style={{ background: "#dbbdb1" }}
               >
                 <h2 className="text-2xl font-bold text-gray-800">
-                  Escanea para Pagar
+                  {t('scanToPay')}
                 </h2>
                 <button
                   onClick={() => setShowQR(false)}
@@ -604,12 +585,12 @@ const MenuCompleto = () => {
                 <div className="bg-white p-4 rounded-2xl shadow-inner mb-6 inline-block">
                   <img
                     src="/qr.jpeg"
-                    alt="Código QR de pago"
+                    alt={t('qrCode')}
                     className="w-64 h-64"
                   />
                 </div>
 
-                <p className="text-gray-600 mb-2">Total a pagar:</p>
+                <p className="text-gray-600 mb-2">{t('totalToPay')}:</p>
                 <p
                   className="text-4xl font-bold mb-4"
                   style={{ color: accentColor }}
@@ -618,7 +599,7 @@ const MenuCompleto = () => {
                 </p>
 
                 <p className="text-sm text-gray-500">
-                  Escanea este código con tu aplicación de pago
+                  {t('scanWithApp')}
                 </p>
               </div>
             </div>
