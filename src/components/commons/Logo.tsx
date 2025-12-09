@@ -10,6 +10,7 @@ export const Logo = () => {
         WALLY
         <span className="text-[#d88c6f]">SUMA</span>
       </p>
+
       <p className="flex text-4x1 lg:hidden">
         <span className="-skew-x-6">W</span>
         <span className="text-[#d88c6f] skew-x-6">SUMA</span>
