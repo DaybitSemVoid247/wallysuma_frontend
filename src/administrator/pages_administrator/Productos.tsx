@@ -7,6 +7,9 @@ import {
   HiChevronDown,
   HiChevronUp,
   HiOutlinePhotograph,
+  HiExclamation,
+  HiCheckCircle,
+  HiXCircle,
 } from "react-icons/hi";
 
 // Interfaces basadas en tu backend
@@ -34,6 +37,17 @@ interface Producto {
   imagen: string | null;
   subcategoria: Subcategoria;
   activo: boolean;
+}
+
+// 🆕 Tipo para los modales
+type ModalType = "success" | "error" | "confirm" | "info" | null;
+
+interface ModalState {
+  show: boolean;
+  type: ModalType;
+  title: string;
+  message: string;
+  onConfirm?: () => void;
 }
 
 // Configuración de la API
@@ -105,7 +119,7 @@ const api = {
     }
   },
 
-  // 🆕 Cambiar estado activo/inactivo
+  // Cambiar estado activo/inactivo
   async toggleEstado(id: number, activo: boolean): Promise<Producto> {
     console.log("🔗 PATCH", `${API_URL}/productos/${id}/estado`, { activo });
     const response = await fetch(`${API_URL}/productos/${id}/estado`, {
@@ -146,6 +160,134 @@ const api = {
   },
 };
 
+// 🆕 Componente Modal Reutilizable
+const CustomModal = ({
+  modal,
+  onClose,
+  onConfirm,
+}: {
+  modal: ModalState;
+  onClose: () => void;
+  onConfirm?: () => void;
+}) => {
+  if (!modal.show) return null;
+
+  const getIcon = () => {
+    switch (modal.type) {
+      case "success":
+        return (
+          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+            <HiCheckCircle className="w-12 h-12 text-white" />
+          </div>
+        );
+      case "error":
+        return (
+          <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
+            <HiXCircle className="w-12 h-12 text-white" />
+          </div>
+        );
+      case "confirm":
+        return (
+          <div className="w-20 h-20 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+            <HiExclamation className="w-12 h-12 text-white" />
+          </div>
+        );
+      case "info":
+        return (
+          <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+            <HiExclamation className="w-12 h-12 text-white" />
+          </div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const getColors = () => {
+    switch (modal.type) {
+      case "success":
+        return {
+          border: "border-green-600",
+          title: "text-green-700",
+          button: "bg-green-600 hover:bg-green-700",
+        };
+      case "error":
+        return {
+          border: "border-red-600",
+          title: "text-red-700",
+          button: "bg-red-600 hover:bg-red-700",
+        };
+      case "confirm":
+        return {
+          border: "border-yellow-600",
+          title: "text-yellow-700",
+          button: "bg-yellow-600 hover:bg-yellow-700",
+        };
+      case "info":
+        return {
+          border: "border-blue-600",
+          title: "text-blue-700",
+          button: "bg-blue-600 hover:bg-blue-700",
+        };
+      default:
+        return {
+          border: "border-gray-600",
+          title: "text-gray-700",
+          button: "bg-gray-600 hover:bg-gray-700",
+        };
+    }
+  };
+
+  const colors = getColors();
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
+      <div
+        className={`bg-gradient-to-br from-white to-slate-50 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border-4 ${colors.border}`}
+      >
+        <div className="mb-6 flex justify-center">{getIcon()}</div>
+
+        <h2 className={`text-3xl font-bold mb-4 ${colors.title}`}>
+          {modal.title}
+        </h2>
+
+        <p className="text-gray-700 mb-6 text-lg whitespace-pre-line">
+          {modal.message}
+        </p>
+
+        <div className="flex gap-3">
+          {modal.type === "confirm" && onConfirm ? (
+            <>
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-bold text-lg transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  onConfirm();
+                  onClose();
+                }}
+                className={`flex-1 px-4 py-3 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition transform hover:scale-105 ${colors.button}`}
+              >
+                Confirmar
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onClose}
+              className={`w-full px-4 py-3 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition transform hover:scale-105 ${colors.button}`}
+            >
+              Aceptar
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const Productos = () => {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -164,13 +306,46 @@ export const Productos = () => {
 
   const [imagenPreview, setImagenPreview] = useState<string>("");
 
+  // 🆕 Estado para el modal personalizado
+  const [modal, setModal] = useState<ModalState>({
+    show: false,
+    type: null,
+    title: "",
+    message: "",
+  });
+
   // Estados para filtros y paginación
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [estadoFilter, setEstadoFilter] = useState(""); // 🆕
+  const [estadoFilter, setEstadoFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(true);
   const itemsPerPage = 5;
+
+  // 🆕 Funciones helper para mostrar modales
+  const showSuccessModal = (title: string, message: string) => {
+    setModal({ show: true, type: "success", title, message });
+  };
+
+  const showErrorModal = (title: string, message: string) => {
+    setModal({ show: true, type: "error", title, message });
+  };
+
+  const showConfirmModal = (
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ) => {
+    setModal({ show: true, type: "confirm", title, message, onConfirm });
+  };
+
+  const showInfoModal = (title: string, message: string) => {
+    setModal({ show: true, type: "info", title, message });
+  };
+
+  const closeModal = () => {
+    setModal({ show: false, type: null, title: "", message: "" });
+  };
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -222,39 +397,43 @@ export const Productos = () => {
       console.error("❌ Error detallado:", error);
       console.error("❌ URL intentada:", API_URL);
 
-      let mensaje = "Error al cargar los datos. ";
+      let mensaje = "Error al cargar los datos.\n\n";
 
       if (error.message.includes("Failed to fetch")) {
-        mensaje += `\n\n🔴 No se puede conectar a ${API_URL}\n\n`;
+        mensaje += `🔴 No se puede conectar a ${API_URL}\n\n`;
         mensaje += "Posibles causas:\n";
-        mensaje += "1. El backend no está corriendo\n";
-        mensaje += "2. La URL es incorrecta\n";
-        mensaje += "3. CORS no está habilitado en el backend";
+        mensaje += "• El backend no está corriendo\n";
+        mensaje += "• La URL es incorrecta\n";
+        mensaje += "• CORS no está habilitado en el backend";
       } else if (error.message.includes("404")) {
-        mensaje += `\n\n🔴 Endpoint no encontrado (404)\n\n`;
+        mensaje += `🔴 Endpoint no encontrado (404)\n\n`;
         mensaje +=
           "Verifica que las rutas /productos, /categorias y /subcategorias existan";
       } else {
         mensaje += error.message;
       }
 
-      alert(mensaje);
+      showErrorModal("Error de Conexión", mensaje);
     } finally {
       setLoading(false);
     }
   };
 
-  // 🆕 Función para cambiar estado
+  // Función para cambiar estado
   const handleToggleEstado = async (id: number, nuevoEstado: boolean) => {
     try {
       await api.toggleEstado(id, nuevoEstado);
       await cargarDatos();
-      alert(
+      showSuccessModal(
+        "Estado Actualizado",
         `Producto ${nuevoEstado ? "activado" : "desactivado"} correctamente`
       );
     } catch (error) {
       console.error("Error al cambiar estado:", error);
-      alert("Error al cambiar el estado del producto");
+      showErrorModal(
+        "Error",
+        "No se pudo cambiar el estado del producto. Por favor, intenta de nuevo."
+      );
     }
   };
 
@@ -287,16 +466,26 @@ export const Productos = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de desactivar este producto?")) return;
-
-    try {
-      await api.deleteProducto(id);
-      await cargarDatos();
-      alert("Producto desactivado correctamente");
-    } catch (error) {
-      console.error("Error al eliminar:", error);
-      alert("Error al eliminar el producto");
-    }
+    showConfirmModal(
+      "Confirmar Desactivación",
+      "¿Estás seguro de que deseas desactivar este producto?",
+      async () => {
+        try {
+          await api.deleteProducto(id);
+          await cargarDatos();
+          showSuccessModal(
+            "Producto Desactivado",
+            "El producto ha sido desactivado correctamente"
+          );
+        } catch (error) {
+          console.error("Error al eliminar:", error);
+          showErrorModal(
+            "Error al Eliminar",
+            "No se pudo eliminar el producto. Por favor, intenta de nuevo."
+          );
+        }
+      }
+    );
   };
 
   const [imagenFile, setImagenFile] = useState<File | null>(null);
@@ -306,12 +495,15 @@ export const Productos = () => {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      alert("Selecciona una imagen válida");
+      showErrorModal(
+        "Archivo Inválido",
+        "Por favor, selecciona una imagen válida"
+      );
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("La imagen no debe superar los 5MB");
+      showErrorModal("Archivo Muy Grande", "La imagen no debe superar los 5MB");
       return;
     }
 
@@ -326,7 +518,10 @@ export const Productos = () => {
       !form.disponibilidad ||
       !form.subcategoria
     ) {
-      alert("Por favor completa todos los campos obligatorios");
+      showErrorModal(
+        "Campos Incompletos",
+        "Por favor completa todos los campos obligatorios"
+      );
       return;
     }
 
@@ -358,7 +553,12 @@ export const Productos = () => {
 
       if (!response.ok) throw new Error("Error en el servidor");
 
-      alert(editingId ? "Producto actualizado" : "Producto creado");
+      showSuccessModal(
+        editingId ? "Producto Actualizado" : "Producto Creado",
+        editingId
+          ? "El producto ha sido actualizado correctamente"
+          : "El producto ha sido creado exitosamente"
+      );
 
       await cargarDatos();
       setShowModal(false);
@@ -366,11 +566,14 @@ export const Productos = () => {
       setImagenPreview("");
     } catch (err) {
       console.error(err);
-      alert("Error al guardar el producto");
+      showErrorModal(
+        "Error al Guardar",
+        "No se pudo guardar el producto. Por favor, verifica los datos e intenta de nuevo."
+      );
     }
   };
 
-  // 🆕 Filtrar productos con estado
+  // Filtrar productos con estado
   const productosFiltrados = productos.filter((producto) => {
     const matchSearch = producto.nombre
       .toLowerCase()
@@ -403,7 +606,6 @@ export const Productos = () => {
     setCurrentPage(1);
   };
 
-  // 🆕 Handler para el filtro de estado
   const handleEstadoChange = (value: string) => {
     setEstadoFilter(value);
     setCurrentPage(1);
@@ -435,6 +637,13 @@ export const Productos = () => {
 
   return (
     <div className="p-6">
+      {/* 🆕 Modal Personalizado */}
+      <CustomModal
+        modal={modal}
+        onClose={closeModal}
+        onConfirm={modal.onConfirm}
+      />
+
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">
           Inventario de Restaurante
@@ -501,7 +710,7 @@ export const Productos = () => {
               ))}
             </select>
 
-            {/* 🆕 Filtro por estado */}
+            {/* Filtro por estado */}
             <select
               value={estadoFilter}
               onChange={(e) => handleEstadoChange(e.target.value)}
@@ -525,7 +734,7 @@ export const Productos = () => {
               <th className="px-6 py-3">Subcategoría</th>
               <th className="px-6 py-3">Precio</th>
               <th className="px-6 py-3">Stock</th>
-              <th className="px-6 py-3">Estado</th> {/* 🆕 */}
+              <th className="px-6 py-3">Estado</th>
               <th className="px-6 py-3 text-center">Acciones</th>
             </tr>
           </thead>
@@ -554,7 +763,6 @@ export const Productos = () => {
                   <td className="px-6 py-3">
                     {producto.disponibilidad || 0} unidades
                   </td>
-                  {/* 🆕 Columna de estado con toggle */}
                   <td className="px-6 py-3">
                     <button
                       onClick={() =>
