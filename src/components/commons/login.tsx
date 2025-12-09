@@ -1,9 +1,12 @@
+// src/components/commons/login.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { MdOutlineMailOutline } from "react-icons/md";
 import { RiLockPasswordLine } from "react-icons/ri";
 import { FaUser, FaEnvelope } from "react-icons/fa";
 import axios from "axios";
+import { useLanguage } from "../../hooks/useLanguage"; // ⭐ NUEVO
+import type { Language } from "../../types/translations"; // ⭐ NUEVO
 
 interface FormData {
   nombre: string;
@@ -16,6 +19,8 @@ interface FormData {
 
 export default function AuthPage() {
   const navigate = useNavigate();
+  const { changeLanguage } = useLanguage(); // ⭐ NUEVO
+
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -56,16 +61,31 @@ export default function AuthPage() {
 
       const { usuario, token } = response.data;
 
+      // Guardar token y usuario en localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("usuarioActual", JSON.stringify(usuario));
-      console.log("Usuario actual:", usuario);
+
+      // ⭐ NUEVO: Aplicar idioma preferido del usuario
+      if (usuario.idiomaPreferido) {
+        try {
+          await changeLanguage(usuario.idiomaPreferido as Language);
+          console.log(
+            `✅ Idioma del usuario aplicado: ${usuario.idiomaPreferido}`
+          );
+        } catch (langError) {
+          console.warn("⚠️ No se pudo cambiar idioma:", langError);
+          // Continuar con el login aunque falle el cambio de idioma
+        }
+      }
+
+      console.log("✅ Login exitoso. Usuario:", usuario);
 
       // Mapa flexible de rutas por rol
       const rutasPorRol: Record<string, string> = {
         Administrador: "/administrator/usuarios",
         Usuario: "/",
         Cocinero: "/pedidos",
-        Cajero: "/cajero"
+        Cajero: "/cajero",
       };
 
       // Buscar el primer rol que tenga una ruta asignada
@@ -77,7 +97,7 @@ export default function AuthPage() {
         navigate("/");
       }
     } catch (err: any) {
-      console.error(err);
+      console.error("❌ Error en login:", err);
       setError(
         err.response?.data?.message || "Error al conectar con el servidor"
       );
@@ -119,7 +139,7 @@ export default function AuthPage() {
       setShowModal(false);
       setCodigo("");
       setError("");
-      setIsLogin(true); // Cambia a la vista de login
+      setIsLogin(true);
     } catch (err: any) {
       if (err.response?.data?.message) {
         setError(err.response.data.message);
@@ -242,7 +262,7 @@ export default function AuthPage() {
         </div>
       )}
 
-      {/* Formulario de Login/Registro */}
+      {/* Formulario de Login/Registro (se mantiene igual) */}
       <div
         className="w-full min-h-screen flex items-center justify-center p-6 overflow-auto bg-cover bg-center bg-no-repeat"
         style={{
@@ -333,6 +353,7 @@ export default function AuthPage() {
                 onSubmit={handleRegistro}
                 className="grid grid-cols-1 md:grid-cols-2 gap-6"
               >
+                {/* Campos del formulario de registro (se mantienen igual) */}
                 <div className="flex items-center border-b-4 border-cyan-600 pb-3">
                   <FaUser className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
                   <input

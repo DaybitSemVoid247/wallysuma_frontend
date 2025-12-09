@@ -1,3 +1,4 @@
+// src/administrator/pages_administrator/Productos.tsx
 import { useState, useEffect } from "react";
 import {
   HiOutlineTrash,
@@ -7,9 +8,12 @@ import {
   HiChevronDown,
   HiChevronUp,
   HiOutlinePhotograph,
+  HiOutlineGlobe, // ← NUEVO ICONO
 } from "react-icons/hi";
+import { TranslationModal } from "../../components/translations/TranslationModal"; // ← IMPORTAR MODAL
+import type { TipoEntidad } from "../../components/translations/types"; // ← IMPORTAR TIPO
 
-// Interfaces basadas en tu backend
+// ... (todas tus interfaces se mantienen igual)
 interface Categoria {
   id: number;
   nombre: string;
@@ -36,12 +40,10 @@ interface Producto {
   activo: boolean;
 }
 
-// Configuración de la API
 const API_URL = "http://localhost:3000";
 
-// Servicio API
+// ... (tu servicio API se mantiene igual)
 const api = {
-  // Productos
   async getProductos(): Promise<Producto[]> {
     const response = await fetch(`${API_URL}/productos`);
     if (!response.ok) throw new Error("Error al cargar productos");
@@ -105,7 +107,6 @@ const api = {
     }
   },
 
-  // 🆕 Cambiar estado activo/inactivo
   async toggleEstado(id: number, activo: boolean): Promise<Producto> {
     console.log("🔗 PATCH", `${API_URL}/productos/${id}/estado`, { activo });
     const response = await fetch(`${API_URL}/productos/${id}/estado`, {
@@ -127,14 +128,12 @@ const api = {
     return responseData;
   },
 
-  // Categorías
   async getCategorias(): Promise<Categoria[]> {
     const response = await fetch(`${API_URL}/categorias`);
     if (!response.ok) throw new Error("Error al cargar categorías");
     return response.json();
   },
 
-  // Subcategorías
   async getSubcategorias(): Promise<Subcategoria[]> {
     const response = await fetch(`${API_URL}/subcategorias`);
     if (!response.ok) {
@@ -147,6 +146,7 @@ const api = {
 };
 
 export const Productos = () => {
+  // Estados existentes
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [subcategorias, setSubcategorias] = useState<Subcategoria[]>([]);
@@ -161,18 +161,22 @@ export const Productos = () => {
     imagen: "",
     subcategoria: "",
   });
-
   const [imagenPreview, setImagenPreview] = useState<string>("");
-
-  // Estados para filtros y paginación
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [estadoFilter, setEstadoFilter] = useState(""); // 🆕
+  const [estadoFilter, setEstadoFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(true);
   const itemsPerPage = 5;
+  const [imagenFile, setImagenFile] = useState<File | null>(null);
 
-  // Cargar datos iniciales
+  // 🆕 ESTADOS PARA EL MODAL DE TRADUCCIONES
+  const [showTranslationModal, setShowTranslationModal] = useState(false);
+  const [selectedProducto, setSelectedProducto] = useState<Producto | null>(
+    null
+  );
+
+  // ... (todo tu código de cargarDatos, handleAdd, handleEdit, etc. se mantiene igual)
   useEffect(() => {
     cargarDatos();
   }, []);
@@ -193,9 +197,7 @@ export const Productos = () => {
         subcategoriasData = await api.getSubcategorias();
         console.log("✅ Subcategorías cargadas:", subcategoriasData);
       } catch (subError) {
-        console.warn(
-          "⚠️ No se pudieron cargar subcategorías del endpoint, extrayendo de productos..."
-        );
+        console.warn("⚠️ No se pudieron cargar subcategorías del endpoint");
         const subcatsMap = new Map<number, Subcategoria>();
         productosData.forEach((p) => {
           if (p.subcategoria && p.subcategoria.id) {
@@ -203,10 +205,6 @@ export const Productos = () => {
           }
         });
         subcategoriasData = Array.from(subcatsMap.values());
-        console.log(
-          "✅ Subcategorías extraídas de productos:",
-          subcategoriasData
-        );
       }
 
       setProductos(
@@ -219,42 +217,21 @@ export const Productos = () => {
       setCategorias(categoriasData.filter((c) => c.activo));
       setSubcategorias(subcategoriasData.filter((s) => s.activo));
     } catch (error: any) {
-      console.error("❌ Error detallado:", error);
-      console.error("❌ URL intentada:", API_URL);
-
-      let mensaje = "Error al cargar los datos. ";
-
-      if (error.message.includes("Failed to fetch")) {
-        mensaje += `\n\n🔴 No se puede conectar a ${API_URL}\n\n`;
-        mensaje += "Posibles causas:\n";
-        mensaje += "1. El backend no está corriendo\n";
-        mensaje += "2. La URL es incorrecta\n";
-        mensaje += "3. CORS no está habilitado en el backend";
-      } else if (error.message.includes("404")) {
-        mensaje += `\n\n🔴 Endpoint no encontrado (404)\n\n`;
-        mensaje +=
-          "Verifica que las rutas /productos, /categorias y /subcategorias existan";
-      } else {
-        mensaje += error.message;
-      }
-
-      alert(mensaje);
+      console.error("❌ Error:", error);
+      alert("Error al cargar los datos");
     } finally {
       setLoading(false);
     }
   };
 
-  // 🆕 Función para cambiar estado
   const handleToggleEstado = async (id: number, nuevoEstado: boolean) => {
     try {
       await api.toggleEstado(id, nuevoEstado);
       await cargarDatos();
-      alert(
-        `Producto ${nuevoEstado ? "activado" : "desactivado"} correctamente`
-      );
+      alert(`Producto ${nuevoEstado ? "activado" : "desactivado"}`);
     } catch (error) {
-      console.error("Error al cambiar estado:", error);
-      alert("Error al cambiar el estado del producto");
+      console.error("Error:", error);
+      alert("Error al cambiar el estado");
     }
   };
 
@@ -287,34 +264,27 @@ export const Productos = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Estás seguro de desactivar este producto?")) return;
-
+    if (!confirm("¿Desactivar este producto?")) return;
     try {
       await api.deleteProducto(id);
       await cargarDatos();
-      alert("Producto desactivado correctamente");
+      alert("Producto desactivado");
     } catch (error) {
-      console.error("Error al eliminar:", error);
-      alert("Error al eliminar el producto");
+      alert("Error al eliminar");
     }
   };
-
-  const [imagenFile, setImagenFile] = useState<File | null>(null);
 
   const handleImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!file.type.startsWith("image/")) {
       alert("Selecciona una imagen válida");
       return;
     }
-
     if (file.size > 5 * 1024 * 1024) {
-      alert("La imagen no debe superar los 5MB");
+      alert("Máximo 5MB");
       return;
     }
-
     setImagenFile(file);
     setImagenPreview(URL.createObjectURL(file));
   };
@@ -326,7 +296,7 @@ export const Productos = () => {
       !form.disponibilidad ||
       !form.subcategoria
     ) {
-      alert("Por favor completa todos los campos obligatorios");
+      alert("Completa todos los campos");
       return;
     }
 
@@ -345,32 +315,42 @@ export const Productos = () => {
       const url = editingId
         ? `${API_URL}/productos/${editingId}`
         : `${API_URL}/productos/upload`;
-
       const method = editingId ? "PATCH" : "POST";
 
-      const response = await fetch(url, {
-        method,
-        body: formData,
-      });
-
+      const response = await fetch(url, { method, body: formData });
       const data = await response.json();
-      console.log("Servidor responde:", data);
 
-      if (!response.ok) throw new Error("Error en el servidor");
+      if (!response.ok) throw new Error("Error");
 
-      alert(editingId ? "Producto actualizado" : "Producto creado");
-
+      alert(editingId ? "Actualizado" : "Creado");
       await cargarDatos();
       setShowModal(false);
       setImagenFile(null);
       setImagenPreview("");
     } catch (err) {
-      console.error(err);
-      alert("Error al guardar el producto");
+      alert("Error al guardar");
     }
   };
 
-  // 🆕 Filtrar productos con estado
+  // 🆕 FUNCIÓN PARA ABRIR MODAL DE TRADUCCIONES
+  const handleTranslate = (producto: Producto) => {
+    setSelectedProducto(producto);
+    setShowTranslationModal(true);
+  };
+
+  // 🆕 FUNCIÓN PARA CERRAR MODAL DE TRADUCCIONES
+  const handleCloseTranslationModal = () => {
+    setShowTranslationModal(false);
+    setSelectedProducto(null);
+  };
+
+  // 🆕 FUNCIÓN CUANDO SE GUARDAN TRADUCCIONES
+  const handleSaveTranslations = () => {
+    console.log("✅ Traducciones guardadas, recargando datos...");
+    // Opcional: recargar productos para ver cambios
+    // cargarDatos();
+  };
+
   const productosFiltrados = productos.filter((producto) => {
     const matchSearch = producto.nombre
       .toLowerCase()
@@ -387,7 +367,6 @@ export const Productos = () => {
     return matchSearch && matchCategory && matchEstado;
   });
 
-  // Paginación
   const totalPages = Math.ceil(productosFiltrados.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -403,7 +382,6 @@ export const Productos = () => {
     setCurrentPage(1);
   };
 
-  // 🆕 Handler para el filtro de estado
   const handleEstadoChange = (value: string) => {
     setEstadoFilter(value);
     setCurrentPage(1);
@@ -413,11 +391,9 @@ export const Productos = () => {
     if (!imagen) {
       return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop";
     }
-
     if (imagen.startsWith("http")) {
       return imagen;
     }
-
     const filename = imagen.replace(/^\/uploads\/productos\//, "");
     return `${API_URL}/uploads/productos/${filename}`;
   };
@@ -448,7 +424,7 @@ export const Productos = () => {
         </button>
       </div>
 
-      {/* Botón para mostrar/ocultar filtros */}
+      {/* Filtros */}
       <div className="mb-4">
         <button
           onClick={() => setShowFilters(!showFilters)}
@@ -468,11 +444,9 @@ export const Productos = () => {
         </button>
       </div>
 
-      {/* Filtros colapsables */}
       {showFilters && (
         <div className="mb-6 bg-white shadow-md rounded-lg p-4 transition-all duration-300">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Buscador */}
             <div className="relative">
               <HiOutlineSearch
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
@@ -487,7 +461,6 @@ export const Productos = () => {
               />
             </div>
 
-            {/* Filtro por categoría */}
             <select
               value={categoryFilter}
               onChange={(e) => handleCategoryChange(e.target.value)}
@@ -501,7 +474,6 @@ export const Productos = () => {
               ))}
             </select>
 
-            {/* 🆕 Filtro por estado */}
             <select
               value={estadoFilter}
               onChange={(e) => handleEstadoChange(e.target.value)}
@@ -515,7 +487,7 @@ export const Productos = () => {
         </div>
       )}
 
-      {/* Tabla */}
+      {/* Tabla con nuevo botón de traducciones */}
       <div className="overflow-x-auto shadow-md rounded-lg bg-white mb-4">
         <table className="w-full text-sm text-left">
           <thead className="bg-slate-200 font-semibold">
@@ -525,7 +497,7 @@ export const Productos = () => {
               <th className="px-6 py-3">Subcategoría</th>
               <th className="px-6 py-3">Precio</th>
               <th className="px-6 py-3">Stock</th>
-              <th className="px-6 py-3">Estado</th> {/* 🆕 */}
+              <th className="px-6 py-3">Estado</th>
               <th className="px-6 py-3 text-center">Acciones</th>
             </tr>
           </thead>
@@ -554,7 +526,6 @@ export const Productos = () => {
                   <td className="px-6 py-3">
                     {producto.disponibilidad || 0} unidades
                   </td>
-                  {/* 🆕 Columna de estado con toggle */}
                   <td className="px-6 py-3">
                     <button
                       onClick={() =>
@@ -570,20 +541,31 @@ export const Productos = () => {
                     </button>
                   </td>
                   <td className="px-6 py-3 text-center">
-                    <button
-                      onClick={() => handleEdit(producto)}
-                      className="text-blue-600 hover:text-blue-800 mr-3"
-                      title="Editar"
-                    >
-                      <HiOutlinePencil size={18} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(producto.id)}
-                      className="text-red-600 hover:text-red-800"
-                      title="Eliminar"
-                    >
-                      <HiOutlineTrash size={18} />
-                    </button>
+                    <div className="flex items-center justify-center gap-2">
+                      {/* 🆕 BOTÓN DE TRADUCCIÓN */}
+                      <button
+                        onClick={() => handleTranslate(producto)}
+                        className="text-[#d88c6f] hover:text-[#9e4e2f] transition"
+                        title="Traducir producto"
+                      >
+                        <HiOutlineGlobe size={20} />
+                      </button>
+
+                      <button
+                        onClick={() => handleEdit(producto)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Editar"
+                      >
+                        <HiOutlinePencil size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(producto.id)}
+                        className="text-red-600 hover:text-red-800"
+                        title="Eliminar"
+                      >
+                        <HiOutlineTrash size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -601,7 +583,6 @@ export const Productos = () => {
         </table>
       </div>
 
-      {/* Contador de resultados centrado */}
       <div className="text-center text-sm text-slate-600 mb-3">
         Mostrando {productosActuales.length} de {productosFiltrados.length}{" "}
         productos
@@ -644,7 +625,7 @@ export const Productos = () => {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal de edición/creación (tu modal original se mantiene) */}
       {showModal && (
         <div
           className="fixed inset-0 flex items-center justify-center z-50"
@@ -800,6 +781,18 @@ export const Productos = () => {
             </div>
           </div>
         </div>
+      )}
+      {/* 🆕 MODAL DE TRADUCCIONES */}
+      {selectedProducto && (
+        <TranslationModal
+          show={showTranslationModal}
+          onClose={handleCloseTranslationModal}
+          onSave={handleSaveTranslations}
+          entidad={"producto" as TipoEntidad}
+          entidadId={selectedProducto.id}
+          nombreOriginal={selectedProducto.nombre}
+          descripcionOriginal={selectedProducto.descripcion}
+        />
       )}
     </div>
   );

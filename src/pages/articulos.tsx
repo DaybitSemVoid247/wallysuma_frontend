@@ -1,5 +1,8 @@
+// src/pages/articulos.tsx
 import { useState, useEffect } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
+import api, { API_BASE_URL } from "../config/api";
+import useLanguage from "../hooks/useLanguage";
 
 // Interfaces basadas en tu backend
 interface Categoria {
@@ -34,31 +37,10 @@ interface CartItem extends Producto {
 
 type Quantities = Record<number, number>;
 
-const API_URL = "http://localhost:3000";
-
-const api = {
-  async getCategorias(): Promise<Categoria[]> {
-    const response = await fetch(`${API_URL}/categorias`);
-    if (!response.ok) throw new Error("Error al cargar categorías");
-    return response.json();
-  },
-
-  async getProductosActivos(): Promise<Producto[]> {
-    const response = await fetch(`${API_URL}/productos/activos`);
-    if (!response.ok) throw new Error("Error al cargar productos");
-    return response.json();
-  },
-
-  async getSubcategorias(): Promise<Subcategoria[]> {
-    const response = await fetch(`${API_URL}/subcategorias`);
-    if (!response.ok) throw new Error("Error al cargar subcategorías");
-    return response.json();
-  },
-};
-
 const MenuCompleto = () => {
   const { t } = useTranslation();
-  
+  const { language } = useLanguage(); // ⭐ AGREGAR
+
   const [cart, setCart] = useState<CartItem[]>([]);
   const [quantities, setQuantities] = useState<Quantities>({});
   const [showModal, setShowModal] = useState<boolean>(false);
@@ -75,19 +57,20 @@ const MenuCompleto = () => {
     const cargarDatos = async () => {
       try {
         setLoading(true);
-        console.log("Intentando conectar a:", API_URL);
+        console.log(`🔄 Cargando datos en idioma: ${language}`);
 
-        const [categoriasData, productosData] = await Promise.all([
-          api.getCategorias(),
-          api.getProductosActivos(),
+        // Usar axios configurado - automáticamente envía el header x-app-language
+        const [categoriasRes, productosRes] = await Promise.all([
+          api.get<Categoria[]>("/categorias"),
+          api.get<Producto[]>("/productos/activos"),
         ]);
 
-        console.log("Categorías cargadas:", categoriasData);
-        console.log("Productos activos cargados:", productosData);
+        console.log("✅ Categorías cargadas:", categoriasRes.data);
+        console.log("✅ Productos activos cargados:", productosRes.data);
 
-        const categoriasActivas = categoriasData.filter((c) => c.activo);
+        const categoriasActivas = categoriasRes.data.filter((c) => c.activo);
         setCategorias(categoriasActivas);
-        setProductos(productosData);
+        setProductos(productosRes.data);
 
         if (categoriasActivas.length > 0) {
           setCategoriaActiva(categoriasActivas[0].id);
@@ -95,15 +78,17 @@ const MenuCompleto = () => {
 
         setError("");
       } catch (err: any) {
-        console.error("Error detallado:", err);
-        setError(t('loadError') + ' ' + err.message);
+        console.error("❌ Error detallado:", err);
+        const errorMsg =
+          err.response?.data?.message || err.message || "Error desconocido";
+        setError(t("loadError") + " " + errorMsg);
       } finally {
         setLoading(false);
       }
     };
 
     cargarDatos();
-  }, [t]);
+  }, [language]);
 
   const productosFiltrados = productos.filter(
     (p) =>
@@ -180,12 +165,9 @@ const MenuCompleto = () => {
     }
 
     const filename = imagen.replace(/^\/uploads\/productos\//, "");
-    return `${API_URL}/uploads/productos/${filename}`;
+    return `${API_BASE_URL}/uploads/productos/${filename}`;
   };
 
-  const categoriaSeleccionada = categorias.find(
-    (c) => c.id === categoriaActiva
-  );
   const accentColor = "#d88c6f";
   const bgGradient = "linear-gradient(135deg, #dbbdb1 0%, #f0e5de 100%)";
 
@@ -197,9 +179,7 @@ const MenuCompleto = () => {
       >
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-800 mx-auto mb-4"></div>
-          <p className="text-gray-700 text-lg font-semibold">
-            {t('loading')}
-          </p>
+          <p className="text-gray-700 text-lg font-semibold">{t("loading")}</p>
         </div>
       </div>
     );
@@ -227,7 +207,7 @@ const MenuCompleto = () => {
               />
             </svg>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              {t('errorTitle')}
+              {t("errorTitle")}
             </h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <button
@@ -235,7 +215,7 @@ const MenuCompleto = () => {
               className="px-6 py-3 rounded-xl font-semibold text-white"
               style={{ background: accentColor }}
             >
-              {t('retry')}
+              {t("retry")}
             </button>
           </div>
         </div>
@@ -249,11 +229,9 @@ const MenuCompleto = () => {
         <div className="bg-white rounded-3xl shadow-xl p-8 mb-10">
           <div className="mb-6">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
-              {t('menu')}
+              {t("menu")}
             </h1>
-            <p className="text-gray-600">
-              {t('menuDescription')}
-            </p>
+            <p className="text-gray-600">{t("menuDescription")}</p>
           </div>
 
           <div className="flex gap-4 flex-wrap">
@@ -288,9 +266,7 @@ const MenuCompleto = () => {
               <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
               <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
             </svg>
-            <p className="text-gray-500 text-lg">
-              {t('noProducts')}
-            </p>
+            <p className="text-gray-500 text-lg">{t("noProducts")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -320,7 +296,7 @@ const MenuCompleto = () => {
                     {producto.nombre}
                   </h3>
                   <p className="text-gray-600 text-sm mb-5 leading-relaxed">
-                    {producto.descripcion || t('deliciousProduct')}
+                    {producto.descripcion || t("deliciousProduct")}
                   </p>
 
                   <div className="flex justify-between items-center mb-5">
@@ -377,7 +353,7 @@ const MenuCompleto = () => {
                       <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
                       <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
                     </svg>
-                    {t('addToCart')}
+                    {t("addToCart")}
                   </button>
                 </div>
               </div>
@@ -430,7 +406,9 @@ const MenuCompleto = () => {
                 className="p-6 border-b border-gray-200 flex justify-between items-center"
                 style={{ background: "#dbbdb1" }}
               >
-                <h2 className="text-2xl font-bold text-gray-800">{t('yourCart')}</h2>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {t("yourCart")}
+                </h2>
                 <button
                   onClick={() => setShowModal(false)}
                   className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 transition-colors"
@@ -450,9 +428,7 @@ const MenuCompleto = () => {
                       <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
                       <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
                     </svg>
-                    <p className="text-gray-500 text-lg">
-                      {t('emptyCart')}
-                    </p>
+                    <p className="text-gray-500 text-lg">{t("emptyCart")}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -488,9 +464,7 @@ const MenuCompleto = () => {
                               }
                               className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-sm font-bold hover:bg-gray-200"
                               style={{ color: accentColor }}
-                            >
-                              −
-                            </button>
+                            ></button>
                             <span className="font-semibold text-gray-800 w-8 text-center">
                               {item.quantity}
                             </span>
@@ -510,7 +484,7 @@ const MenuCompleto = () => {
                             onClick={() => removeFromCart(item.id)}
                             className="text-red-500 hover:text-red-700 font-bold text-sm"
                           >
-                            {t('remove')}
+                            {t("remove")}
                           </button>
                           <p
                             className="font-bold text-lg"
@@ -533,7 +507,7 @@ const MenuCompleto = () => {
                 >
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-xl font-bold text-gray-800">
-                      {t('total')}:
+                      {t("total")}:
                     </span>
                     <span
                       className="text-3xl font-bold"
@@ -547,7 +521,7 @@ const MenuCompleto = () => {
                     className="w-full text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:shadow-lg"
                     style={{ background: accentColor }}
                   >
-                    {t('proceedPayment')}
+                    {t("proceedPayment")}
                   </button>
                 </div>
               )}
@@ -571,7 +545,7 @@ const MenuCompleto = () => {
                 style={{ background: "#dbbdb1" }}
               >
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {t('scanToPay')}
+                  {t("scanToPay")}
                 </h2>
                 <button
                   onClick={() => setShowQR(false)}
@@ -583,14 +557,10 @@ const MenuCompleto = () => {
 
               <div className="p-8 text-center">
                 <div className="bg-white p-4 rounded-2xl shadow-inner mb-6 inline-block">
-                  <img
-                    src="/qr.jpeg"
-                    alt={t('qrCode')}
-                    className="w-64 h-64"
-                  />
+                  <img src="/qr.jpeg" alt={t("qrCode")} className="w-64 h-64" />
                 </div>
 
-                <p className="text-gray-600 mb-2">{t('totalToPay')}:</p>
+                <p className="text-gray-600 mb-2">{t("totalToPay")}:</p>
                 <p
                   className="text-4xl font-bold mb-4"
                   style={{ color: accentColor }}
@@ -598,9 +568,7 @@ const MenuCompleto = () => {
                   Bs {getTotalPrice()}
                 </p>
 
-                <p className="text-sm text-gray-500">
-                  {t('scanWithApp')}
-                </p>
+                <p className="text-sm text-gray-500">{t("scanWithApp")}</p>
               </div>
             </div>
           </div>
