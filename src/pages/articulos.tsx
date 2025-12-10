@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import api, { API_BASE_URL } from "../config/api";
 import useLanguage from "../hooks/useLanguage";
 
-// Interfaces basadas en tu backend
+// ============= INTERFACES =============
 interface Categoria {
   id: number;
   nombre: string;
@@ -37,29 +37,74 @@ interface CartItem extends Producto {
 
 type Quantities = Record<number, number>;
 
+// ============= CONFIGURACIÓN =============
+const accentColor = "#d88c6f";
+const bgGradient = "linear-gradient(135deg, #dbbdb1 0%, #f0e5de 100%)";
+
+// ============= FUNCIONES AUXILIARES =============
+const getUsuarioId = (): number => {
+  const usuarioStr = localStorage.getItem("usuarioActual");
+  if (usuarioStr) {
+    try {
+      const usuario = JSON.parse(usuarioStr);
+      console.log("Usuario logueado:", usuario);
+      return usuario.id;
+    } catch (error) {
+      console.error("Error al parsear usuario:", error);
+      window.location.href = "/login";
+      return 1;
+    }
+  }
+  console.warn("No hay usuario logueado, redirigiendo al login...");
+  window.location.href = "/login";
+  return 1;
+};
+
+const getImageUrl = (imagen: string | null): string => {
+  if (!imagen) {
+    return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop";
+  }
+
+  if (imagen.startsWith("http")) {
+    return imagen;
+  }
+
+  const filename = imagen.replace(/^\/uploads\/productos\//, "");
+  return `${API_BASE_URL}/uploads/productos/${filename}`;
+};
+
+// ============= COMPONENTE PRINCIPAL =============
 const MenuCompleto = () => {
   const { t } = useTranslation();
-  const { language } = useLanguage(); // ⭐ AGREGAR
+  const { language } = useLanguage();
 
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [quantities, setQuantities] = useState<Quantities>({});
-  const [showModal, setShowModal] = useState<boolean>(false);
-  const [showQR, setShowQR] = useState<boolean>(false);
-  const [animatingItems, setAnimatingItems] = useState<number[]>([]);
+  // ============= ESTADOS =============
+  const [usuarioId] = useState<number>(getUsuarioId());
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
   const [categoriaActiva, setCategoriaActiva] = useState<number | null>(null);
 
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [quantities, setQuantities] = useState<Quantities>({});
+
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [showQR, setShowQR] = useState<boolean>(false);
+  const [showConfirmacion, setShowConfirmacion] = useState<boolean>(false);
+  const [animatingItems, setAnimatingItems] = useState<number[]>([]);
+  const [creandoPedido, setCreandoPedido] = useState<boolean>(false);
+
+  const [pedidoCreado, setPedidoCreado] = useState<any>(null);
+
+  // ============= EFECTO DE CARGA =============
   useEffect(() => {
     const cargarDatos = async () => {
       try {
         setLoading(true);
         console.log(`🔄 Cargando datos en idioma: ${language}`);
 
-        // Usar axios configurado - automáticamente envía el header x-app-language
         const [categoriasRes, productosRes] = await Promise.all([
           api.get<Categoria[]>("/categorias"),
           api.get<Producto[]>("/productos/activos"),
@@ -88,7 +133,37 @@ const MenuCompleto = () => {
     };
 
     cargarDatos();
-  }, [language]);
+  }, [language, t]);
+
+  // ============= FUNCIONES DE CANTIDADES =============
+  const getQuantity = (productId: number): number => {
+    return quantities[productId] || 1;
+  };
+
+  const updateQuantity = (productId: number, newQuantity: number): void => {
+    if (newQuantity >= 1) {
+      const producto = productos.find((p) => p.id === productId);
+      if (
+        producto &&
+        producto.disponibilidad &&
+        newQuantity > producto.disponibilidad
+      ) {
+        alert(`Solo hay ${producto.disponibilidad} unidades disponibles`);
+        return;
+      }
+      setQuantities({ ...quantities, [productId]: newQuantity });
+    }
+  };
+
+  const getTotalItems = (): number => {
+    return cart.reduce((total, item) => total + item.quantity, 0);
+  };
+
+  const getTotalPrice = (): string => {
+    return cart
+      .reduce((total, item) => total + Number(item.precio) * item.quantity, 0)
+      .toFixed(2);
+  };
 
   const productosFiltrados = productos.filter(
     (p) =>
@@ -96,18 +171,20 @@ const MenuCompleto = () => {
       p.disponibilidad !== 0
   );
 
-  const getQuantity = (productId: number): number => {
-    return quantities[productId] || 1;
-  };
-
-  const updateQuantity = (productId: number, newQuantity: number): void => {
-    if (newQuantity >= 1) {
-      setQuantities({ ...quantities, [productId]: newQuantity });
-    }
-  };
-
+  // ============= FUNCIONES DE CARRITO =============
   const addToCart = (product: Producto): void => {
     const quantity = getQuantity(product.id);
+    const existingItem = cart.find((item) => item.id === product.id);
+    const cantidadActualEnCarrito = existingItem ? existingItem.quantity : 0;
+    const cantidadTotal = cantidadActualEnCarrito + quantity;
+
+    if (product.disponibilidad && cantidadTotal > product.disponibilidad) {
+      alert(
+        `Solo hay ${product.disponibilidad} unidades disponibles de ${product.nombre}. Ya tienes ${cantidadActualEnCarrito} en el carrito.`
+      );
+      return;
+    }
+
     const existingIndex = cart.findIndex((item) => item.id === product.id);
 
     if (existingIndex >= 0) {
@@ -138,6 +215,19 @@ const MenuCompleto = () => {
       removeFromCart(productId);
       return;
     }
+
+    const producto = productos.find((p) => p.id === productId);
+    if (
+      producto &&
+      producto.disponibilidad &&
+      newQuantity > producto.disponibilidad
+    ) {
+      alert(
+        `Solo hay ${producto.disponibilidad} unidades disponibles de ${producto.nombre}`
+      );
+      return;
+    }
+
     setCart(
       cart.map((item) =>
         item.id === productId ? { ...item, quantity: newQuantity } : item
@@ -145,32 +235,42 @@ const MenuCompleto = () => {
     );
   };
 
-  const getTotalItems = (): number => {
-    return cart.reduce((total, item) => total + item.quantity, 0);
-  };
+  // ============= FUNCIÓN DE PAGO =============
+  const confirmarPago = async () => {
+    try {
+      setCreandoPedido(true);
 
-  const getTotalPrice = (): string => {
-    return cart
-      .reduce((total, item) => total + Number(item.precio) * item.quantity, 0)
-      .toFixed(2);
-  };
+      const pedidoData = {
+        usuarioId: usuarioId,
+        metodoPago: "QR",
+        tipoEntrega: "LLEVAR",
+        notas: "",
+        detalles: cart.map((item) => ({
+          productoId: item.id,
+          cantidad: item.quantity,
+        })),
+      };
 
-  const getImageUrl = (imagen: string | null): string => {
-    if (!imagen) {
-      return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop";
+      console.log("Enviando pedido:", pedidoData);
+
+      const response = await api.post("/pedidos", pedidoData);
+      console.log("Pedido creado:", response.data);
+
+      setPedidoCreado(response.data.datos);
+      setShowQR(false);
+      setShowConfirmacion(true);
+
+      setCart([]);
+    } catch (err: any) {
+      console.error("Error al crear pedido:", err);
+      const errorMsg = err.response?.data?.message || err.message;
+      alert("Error al crear el pedido: " + errorMsg);
+    } finally {
+      setCreandoPedido(false);
     }
-
-    if (imagen.startsWith("http")) {
-      return imagen;
-    }
-
-    const filename = imagen.replace(/^\/uploads\/productos\//, "");
-    return `${API_BASE_URL}/uploads/productos/${filename}`;
   };
 
-  const accentColor = "#d88c6f";
-  const bgGradient = "linear-gradient(135deg, #dbbdb1 0%, #f0e5de 100%)";
-
+  // ============= RENDERIZADO CONDICIONAL =============
   if (loading) {
     return (
       <div
@@ -295,10 +395,29 @@ const MenuCompleto = () => {
                   <h3 className="text-2xl font-bold text-gray-800 mb-2">
                     {producto.nombre}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-5 leading-relaxed">
+                  <p className="text-gray-600 text-sm mb-5 leading-relaxed"></p>
+                  =======
+                  <p className="text-gray-600 text-sm mb-3 leading-relaxed">
                     {producto.descripcion || t("deliciousProduct")}
                   </p>
-
+                  {/* Indicador de stock */}
+                  {producto.disponibilidad !== undefined && (
+                    <div className="mb-3">
+                      {producto.disponibilidad > 10 ? (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+                          ✓ Disponible ({producto.disponibilidad} unidades)
+                        </span>
+                      ) : producto.disponibilidad > 0 ? (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-semibold">
+                          ⚠ Últimas {producto.disponibilidad} unidades
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold">
+                          ✕ Agotado
+                        </span>
+                      )}
+                    </div>
+                  )}
                   <div className="flex justify-between items-center mb-5">
                     <span
                       className="text-3xl font-bold"
@@ -339,11 +458,18 @@ const MenuCompleto = () => {
                       </button>
                     </div>
                   </div>
-
                   <button
                     onClick={() => addToCart(producto)}
-                    className="w-full text-white py-3.5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-lg"
-                    style={{ background: accentColor }}
+                    disabled={
+                      !producto.disponibilidad || producto.disponibilidad === 0
+                    }
+                    className="w-full text-white py-3.5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    style={{
+                      background:
+                        producto.disponibilidad && producto.disponibilidad > 0
+                          ? accentColor
+                          : undefined,
+                    }}
                   >
                     <svg
                       className="w-5 h-5 stroke-white fill-none"
@@ -354,6 +480,9 @@ const MenuCompleto = () => {
                       <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
                     </svg>
                     {t("addToCart")}
+                    {producto.disponibilidad && producto.disponibilidad > 0
+                      ? t("addToCart")
+                      : "Agotado"}
                   </button>
                 </div>
               </div>
@@ -562,13 +691,95 @@ const MenuCompleto = () => {
 
                 <p className="text-gray-600 mb-2">{t("totalToPay")}:</p>
                 <p
-                  className="text-4xl font-bold mb-4"
+                  className="text-4xl font-bold mb-6"
                   style={{ color: accentColor }}
                 >
                   Bs {getTotalPrice()}
                 </p>
 
-                <p className="text-sm text-gray-500">{t("scanWithApp")}</p>
+                <p className="text-sm text-gray-500 mb-6">{t("scanWithApp")}</p>
+
+                <button
+                  onClick={confirmarPago}
+                  disabled={creandoPedido}
+                  className="w-full text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: accentColor }}
+                >
+                  {creandoPedido
+                    ? "Procesando..."
+                    : "Ya pagué - Confirmar pedido"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación */}
+        {showConfirmacion && pedidoCreado && (
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 z-50"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="p-6 border-b border-gray-200"
+                style={{ background: "#dbbdb1" }}
+              >
+                <h2 className="text-2xl font-bold text-gray-800 text-center">
+                  ¡Pedido Confirmado!
+                </h2>
+              </div>
+
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg
+                    className="w-12 h-12 text-green-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                  Tu pedido ha sido registrado
+                </h3>
+                <p className="text-gray-600 mb-4">Número de pedido:</p>
+                <p
+                  className="text-3xl font-bold mb-6"
+                  style={{ color: accentColor }}
+                >
+                  {pedidoCreado.numeroPedido}
+                </p>
+
+                <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
+                  <h4 className="font-bold text-gray-800 mb-2">Resumen:</h4>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p>Total: Bs {Number(pedidoCreado.total).toFixed(2)}</p>
+                    <p>Estado: {pedidoCreado.estado}</p>
+                    <p>Método de pago: {pedidoCreado.metodoPago}</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowConfirmacion(false);
+                    setShowModal(false);
+                  }}
+                  className="w-full text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:shadow-lg"
+                  style={{ background: accentColor }}
+                >
+                  Continuar
+                </button>
               </div>
             </div>
           </div>

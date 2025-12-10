@@ -9,11 +9,11 @@ import { Pedidos } from "../administrator/pages_administrator/pedidos";
 import { CajeroPedidos } from "../administrator/cajero/cajero";
 import InicioSesionUsuarios from "../components/commons/login";
 import RegistroUsuarios from "../components/commons/form";
-import Categorias from "../pages/categorias";
-import Articulos from "../pages/articulos";
 import { LoginLayout } from "../layouts/LoginLayout";
 
 import ProtectedRoute from "../router/rutasProtegidas";
+import RestaurantLanding from "../pages/categorias";
+import MenuCompleto from "../pages/articulos";
 
 export const router = createBrowserRouter([
   {
@@ -22,11 +22,11 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <Articulos />,
+        element: <RestaurantLanding />,
       },
       {
-        path: "categorias",
-        element: <Categorias />,
+        path: "articulos",
+        element: <MenuCompleto />,
       },
     ],
   },

@@ -1,12 +1,14 @@
 // src/components/commons/login.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next"; // ⭐ USAR
 import { MdOutlineMailOutline } from "react-icons/md";
 import { RiLockPasswordLine } from "react-icons/ri";
 import { FaUser, FaEnvelope } from "react-icons/fa";
 import axios from "axios";
-import { useLanguage } from "../../hooks/useLanguage"; // ⭐ NUEVO
-import type { Language } from "../../types/translations"; // ⭐ NUEVO
+import { useLanguage } from "../../hooks/useLanguage";
+import { LanguageSelector } from "../LanguageSelector"; // ⭐ IMPORTAR
+import type { Language } from "../../types/translations";
 
 interface FormData {
   nombre: string;
@@ -19,7 +21,8 @@ interface FormData {
 
 export default function AuthPage() {
   const navigate = useNavigate();
-  const { changeLanguage } = useLanguage(); // ⭐ NUEVO
+  const { t } = useTranslation(); // ⭐ USAR TRADUCCIONES
+  const { changeLanguage } = useLanguage();
 
   const [isLogin, setIsLogin] = useState(true);
   const [error, setError] = useState("");
@@ -27,12 +30,9 @@ export default function AuthPage() {
   const [correoLogin, setCorreoLogin] = useState("");
   const [contrasenaLogin, setContrasenaLogin] = useState("");
 
-  // Estados para el modal de verificación
   const [showModal, setShowModal] = useState(false);
   const [codigo, setCodigo] = useState("");
   const [correoVerificacion, setCorreoVerificacion] = useState("");
-
-  // Estado para el modal de éxito
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [formData, setFormData] = useState<FormData>({
@@ -64,26 +64,18 @@ export default function AuthPage() {
 
       const { usuario, token } = response.data;
 
-      // Guardar token y usuario en localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("usuarioActual", JSON.stringify(usuario));
 
-      // ⭐ NUEVO: Aplicar idioma preferido del usuario
       if (usuario.idiomaPreferido) {
         try {
           await changeLanguage(usuario.idiomaPreferido as Language);
-          console.log(
-            `✅ Idioma del usuario aplicado: ${usuario.idiomaPreferido}`
-          );
+          console.log(`✅ Idioma aplicado: ${usuario.idiomaPreferido}`);
         } catch (langError) {
-          console.warn("⚠️ No se pudo cambiar idioma:", langError);
-          // Continuar con el login aunque falle el cambio de idioma
+          console.warn("⚠️ Error al cambiar idioma:", langError);
         }
       }
 
-      console.log("✅ Login exitoso. Usuario:", usuario);
-
-      // Mapa flexible de rutas por rol
       const rutasPorRol: Record<string, string> = {
         Administrador: "/administrator/estadisticas",
         Usuario: "/",
@@ -91,7 +83,6 @@ export default function AuthPage() {
         Cajero: "/cajero",
       };
 
-      // Buscar el primer rol que tenga una ruta asignada
       const rolAsignado = usuario.roles.find((rol: string) => rutasPorRol[rol]);
 
       if (rolAsignado) {
@@ -100,10 +91,8 @@ export default function AuthPage() {
         navigate("/");
       }
     } catch (err: any) {
-      console.error("❌ Error en login:", err);
-      setError(
-        err.response?.data?.message || "Error al conectar con el servidor"
-      );
+      console.error("❌ Error:", err);
+      setError(err.response?.data?.message || t("errorServerConnection"));
     } finally {
       setLoading(false);
     }
@@ -115,7 +104,7 @@ export default function AuthPage() {
     if (["nombre", "apellidoPaterno", "apellidoMaterno"].includes(name)) {
       const soloLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
       if (!soloLetras.test(value)) {
-        setError(`El campo ${name} solo puede contener letras`);
+        setError(t("errorOnlyLetters", { field: name }));
         return;
       } else setError("");
     }
@@ -123,35 +112,25 @@ export default function AuthPage() {
     setFormData({ ...formData, [name]: value });
   };
 
-  // Función para verificar el código de 6 dígitos
   const verificarCodigo = async () => {
     if (!codigo.trim()) {
-      setError("Debes ingresar un código");
+      setError(t("errorEnterCode"));
       return;
     }
 
     try {
-      const API_URL = "http://localhost:3000/usuarios/verificar-codigo";
-
-      const response = await axios.post(API_URL, {
+      await axios.post("http://localhost:3000/usuarios/verificar-codigo", {
         correo: correoVerificacion,
         codigo: codigo,
       });
 
-      // Cerrar modal y limpiar campos
       setShowModal(false);
       setCodigo("");
       setError("");
-
-      // Mostrar modal de éxito o indicar login según tu lógica
-      setShowSuccessModal(true); // si quieres mostrar un modal de éxito
-      setIsLogin(true); // si quieres indicar que el usuario ya puede iniciar sesión
+      setShowSuccessModal(true);
+      setIsLogin(true);
     } catch (err: any) {
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else {
-        setError("Error al verificar el código");
-      }
+      setError(err.response?.data?.message || t("errorVerifyingCode"));
     }
   };
 
@@ -159,26 +138,25 @@ export default function AuthPage() {
     e.preventDefault();
     setError("");
 
-    // Validaciones
     const soloLetras = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/;
     if (!soloLetras.test(formData.nombre)) {
-      setError("El nombre solo puede contener letras");
+      setError(t("errorOnlyLetters", { field: "nombre" }));
       return;
     }
     if (!soloLetras.test(formData.apellidoPaterno)) {
-      setError("El apellido paterno solo puede contener letras");
+      setError(t("errorOnlyLetters", { field: "apellidoPaterno" }));
       return;
     }
     if (!soloLetras.test(formData.apellidoMaterno)) {
-      setError("El apellido materno solo puede contener letras");
+      setError(t("errorOnlyLetters", { field: "apellidoMaterno" }));
       return;
     }
     if (formData.contrasena.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+      setError(t("errorMinPassword"));
       return;
     }
     if (formData.contrasena !== formData.confirmarContrasena) {
-      setError("Las contraseñas no coinciden");
+      setError(t("errorPasswordMismatch"));
       return;
     }
 
@@ -193,11 +171,9 @@ export default function AuthPage() {
         rolesIds: [2],
       });
 
-      // Guardar correo y mostrar modal de verificación
       setCorreoVerificacion(formData.correo);
       setShowModal(true);
 
-      // Limpiar formulario
       setFormData({
         nombre: "",
         apellidoPaterno: "",
@@ -208,11 +184,7 @@ export default function AuthPage() {
       });
     } catch (err: any) {
       console.error(err);
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else {
-        setError("Error al conectar con el servidor");
-      }
+      setError(err.response?.data?.message || t("errorServerConnection"));
     } finally {
       setLoading(false);
     }
@@ -223,8 +195,7 @@ export default function AuthPage() {
       {/* Modal de Éxito */}
       {showSuccessModal && (
         <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
-          <div className="bg-gradient-to-br from-white to-cyan-50 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border-4 border-cyan-600 animate-fadeIn">
-            {/* Icono de éxito */}
+          <div className="bg-gradient-to-br from-white to-cyan-50 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border-4 border-cyan-600">
             <div className="mb-6 flex justify-center">
               <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
                 <svg
@@ -244,14 +215,14 @@ export default function AuthPage() {
             </div>
 
             <h2 className="text-3xl font-bold mb-4 text-cyan-700">
-              ¡Cuenta Verificada!
+              {t("accountVerifiedTitle")}
             </h2>
 
             <p className="text-gray-700 mb-6 text-lg">
-              Tu cuenta ha sido verificada correctamente.
+              {t("accountVerifiedMessage")}
               <br />
               <span className="font-semibold text-cyan-600">
-                Ahora puedes iniciar sesión
+                {t("nowCanLogin")}
               </span>
             </p>
 
@@ -262,22 +233,22 @@ export default function AuthPage() {
               }}
               className="w-full bg-cyan-600 text-white py-3 rounded-lg hover:bg-cyan-700 font-bold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
             >
-              Aceptar
+              {t("acceptButton")}
             </button>
           </div>
         </div>
       )}
 
-      {/* Modal de Verificación de Correo */}
+      {/* Modal de Verificación */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-50 p-4">
           <div className="bg-white p-8 rounded-lg shadow-xl max-w-sm w-full text-center border-4 border-cyan-600">
             <h2 className="text-2xl font-bold mb-4 text-cyan-700">
-              Verificación de Correo
+              {t("emailVerificationTitle")}
             </h2>
 
             <p className="text-gray-700 mb-4">
-              Ingresa el código de 6 dígitos enviado a:
+              {t("emailVerificationMessage")}
               <br />
               <strong>{correoVerificacion}</strong>
             </p>
@@ -289,7 +260,7 @@ export default function AuthPage() {
             <input
               type="text"
               maxLength={6}
-              placeholder="Código de verificación"
+              placeholder={t("verificationCodePlaceholder")}
               value={codigo}
               onChange={(e) => setCodigo(e.target.value)}
               className="w-full border-2 border-cyan-600 p-2 rounded mb-4 text-center text-xl tracking-widest"
@@ -299,7 +270,7 @@ export default function AuthPage() {
               onClick={verificarCodigo}
               className="w-full bg-cyan-600 text-white py-2 rounded hover:bg-cyan-700 font-semibold"
             >
-              Verificar Código
+              {t("verifyCodeButton")}
             </button>
 
             <button
@@ -310,20 +281,24 @@ export default function AuthPage() {
               }}
               className="mt-3 text-gray-600 hover:underline"
             >
-              Cancelar
+              {t("cancelButton")}
             </button>
           </div>
         </div>
       )}
 
-      {/* Formulario de Login/Registro (se mantiene igual) */}
+      {/* Formulario Principal */}
       <div
         className="w-full min-h-screen flex items-center justify-center p-6 overflow-auto bg-cover bg-center bg-no-repeat"
-        style={{
-          backgroundImage: "url('/public/wallysuma.png')",
-        }}
+        style={{ backgroundImage: "url('/public/wallysuma.png')" }}
       >
         <div className="absolute inset-0 bg-[#FFA07A]/10 backdrop-blur-sm"></div>
+
+        {/* ⭐ SELECTOR DE IDIOMA (flotante arriba a la derecha) */}
+        <div className="fixed top-4 right-4 z-50">
+          <LanguageSelector />
+        </div>
+
         <div
           className={`relative z-10 w-full ${
             isLogin ? "max-w-md" : "max-w-4xl"
@@ -333,7 +308,7 @@ export default function AuthPage() {
         >
           <div className="text-center mb-8">
             <h2 className="text-4xl font-bold text-black-900 mb-2">
-              {isLogin ? "INICIAR SESIÓN" : "REGISTRO DE USUARIOS"}
+              {isLogin ? t("loginTitle") : t("registerTitle")}
             </h2>
             <div className="w-16 h-1 bg-cyan-600 mx-auto"></div>
           </div>
@@ -351,7 +326,7 @@ export default function AuthPage() {
                   <MdOutlineMailOutline className="text-3xl text-cyan-600 mr-4 flex-shrink-0" />
                   <input
                     type="email"
-                    placeholder="Correo Electrónico"
+                    placeholder={t("email")}
                     className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium"
                     value={correoLogin}
                     onChange={(e) => setCorreoLogin(e.target.value)}
@@ -365,7 +340,7 @@ export default function AuthPage() {
                   <RiLockPasswordLine className="text-3xl text-cyan-600 mr-4 flex-shrink-0" />
                   <input
                     type="password"
-                    placeholder="Contraseña"
+                    placeholder={t("password")}
                     className="w-full bg-transparent outline-none placeholder-black-800 text-black-950 font-medium"
                     value={contrasenaLogin}
                     onChange={(e) => setContrasenaLogin(e.target.value)}
@@ -381,13 +356,13 @@ export default function AuthPage() {
                   className="bg-cyan-600 text-white px-8 py-3 border-2 border-cyan-700 hover:bg-cyan-700 hover:shadow-lg transition-all font-bold text-lg disabled:bg-gray-400 disabled:border-gray-500"
                   style={{ borderRadius: "16px" }}
                 >
-                  {loading ? "CARGANDO..." : "ENTRAR"}
+                  {loading ? t("loadingButton") : t("loginButton")}
                 </button>
               </div>
 
               <div className="mt-6 pt-6 border-t-2 border-black-900 text-center">
                 <p className="text-black-900 font-semibold">
-                  ¿No tienes cuenta?
+                  {t("dontHaveAccount")}
                   <button
                     type="button"
                     onClick={() => {
@@ -396,7 +371,7 @@ export default function AuthPage() {
                     }}
                     className="text-cyan-600 hover:text-cyan-700 font-bold ml-2 hover:underline"
                   >
-                    Regístrate aquí
+                    {t("registerHere")}
                   </button>
                 </p>
               </div>
@@ -407,12 +382,11 @@ export default function AuthPage() {
                 onSubmit={handleRegistro}
                 className="grid grid-cols-1 md:grid-cols-2 gap-6"
               >
-                {/* Campos del formulario de registro (se mantienen igual) */}
                 <div className="flex items-center border-b-4 border-cyan-600 pb-3">
                   <FaUser className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
                   <input
                     type="text"
-                    placeholder="Nombre"
+                    placeholder={t("firstName")}
                     name="nombre"
                     value={formData.nombre}
                     onChange={handleChange}
@@ -425,7 +399,7 @@ export default function AuthPage() {
                   <FaUser className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
                   <input
                     type="text"
-                    placeholder="Apellido Paterno"
+                    placeholder={t("lastName")}
                     name="apellidoPaterno"
                     value={formData.apellidoPaterno}
                     onChange={handleChange}
@@ -438,7 +412,7 @@ export default function AuthPage() {
                   <FaUser className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
                   <input
                     type="text"
-                    placeholder="Apellido Materno"
+                    placeholder={t("motherLastName")}
                     name="apellidoMaterno"
                     value={formData.apellidoMaterno}
                     onChange={handleChange}
@@ -451,7 +425,7 @@ export default function AuthPage() {
                   <FaEnvelope className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
                   <input
                     type="email"
-                    placeholder="Correo Electrónico"
+                    placeholder={t("email")}
                     name="correo"
                     value={formData.correo}
                     onChange={handleChange}
@@ -464,7 +438,7 @@ export default function AuthPage() {
                   <RiLockPasswordLine className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
                   <input
                     type="password"
-                    placeholder="Contraseña"
+                    placeholder={t("password")}
                     name="contrasena"
                     value={formData.contrasena}
                     onChange={handleChange}
@@ -477,7 +451,7 @@ export default function AuthPage() {
                   <RiLockPasswordLine className="text-2xl text-cyan-600 mr-3 flex-shrink-0" />
                   <input
                     type="password"
-                    placeholder="Confirme Contraseña"
+                    placeholder={t("confirmPassword")}
                     name="confirmarContrasena"
                     value={formData.confirmarContrasena}
                     onChange={handleChange}
@@ -493,14 +467,14 @@ export default function AuthPage() {
                     className="bg-cyan-600 text-gray-50 px-8 py-3 border-2 border-cyan-700 hover:bg-cyan-700 hover:shadow-lg transition-all font-bold text-lg disabled:opacity-50"
                     style={{ borderRadius: "2px" }}
                   >
-                    {loading ? "Registrando..." : "REGISTRARSE"}
+                    {loading ? t("registeringButton") : t("registerButton")}
                   </button>
                 </div>
               </form>
 
               <div className="w-full flex justify-center mt-6">
                 <p className="text-black-900 font-semibold text-center">
-                  ¿Ya tienes cuenta?
+                  {t("alreadyHaveAccount")}
                   <button
                     type="button"
                     onClick={() => {
@@ -509,7 +483,7 @@ export default function AuthPage() {
                     }}
                     className="text-cyan-600 hover:text-cyan-700 font-bold hover:underline ml-2"
                   >
-                    Inicia sesión aquí
+                    {t("loginHere")}
                   </button>
                 </p>
               </div>
