@@ -7,13 +7,15 @@ import {
   HiOutlineSearch,
   HiChevronDown,
   HiChevronUp,
-  HiOutlinePhotograph,
-  HiOutlineGlobe, // ← NUEVO ICONO
+  HiOutlineGlobe,
+  HiExclamation,
+  HiCheckCircle,
+  HiXCircle,
 } from "react-icons/hi";
-import { TranslationModal } from "../../components/translations/TranslationModal"; // ← IMPORTAR MODAL
-import type { TipoEntidad } from "../../components/translations/types"; // ← IMPORTAR TIPO
+import { TranslationModal } from "../../components/translations/TranslationModal";
+import type { TipoEntidad } from "../../components/translations/types";
+import api, { API_BASE_URL } from "../../config/api"; // ⭐ IMPORTAR AXIOS
 
-// ... (todas tus interfaces se mantienen igual)
 interface Categoria {
   id: number;
   nombre: string;
@@ -40,113 +42,142 @@ interface Producto {
   activo: boolean;
 }
 
-const API_URL = "http://localhost:3000";
+type ModalType = "success" | "error" | "confirm" | "info" | null;
 
-// ... (tu servicio API se mantiene igual)
-const api = {
-  async getProductos(): Promise<Producto[]> {
-    const response = await fetch(`${API_URL}/productos`);
-    if (!response.ok) throw new Error("Error al cargar productos");
-    return response.json();
-  },
+interface ModalState {
+  show: boolean;
+  type: ModalType;
+  title: string;
+  message: string;
+  onConfirm?: () => void;
+}
 
-  async createProducto(data: any): Promise<Producto> {
-    console.log("🔗 POST", `${API_URL}/productos`, data);
-    const response = await fetch(`${API_URL}/productos`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
+// ⭐ MODAL BONITO (tu código original)
+const CustomModal = ({
+  modal,
+  onClose,
+  onConfirm,
+}: {
+  modal: ModalState;
+  onClose: () => void;
+  onConfirm?: () => void;
+}) => {
+  if (!modal.show) return null;
 
-    const responseData = await response.json();
-    console.log("📥 Respuesta:", response.status, responseData);
-
-    if (!response.ok) {
-      throw new Error(
-        `Error al crear producto (${response.status}): ${JSON.stringify(
-          responseData
-        )}`
-      );
+  const getIcon = () => {
+    switch (modal.type) {
+      case "success":
+        return (
+          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
+            <HiCheckCircle className="w-12 h-12 text-white" />
+          </div>
+        );
+      case "error":
+        return (
+          <div className="w-20 h-20 bg-red-500 rounded-full flex items-center justify-center shadow-lg">
+            <HiXCircle className="w-12 h-12 text-white" />
+          </div>
+        );
+      case "confirm":
+        return (
+          <div className="w-20 h-20 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
+            <HiExclamation className="w-12 h-12 text-white" />
+          </div>
+        );
+      case "info":
+        return (
+          <div className="w-20 h-20 bg-blue-500 rounded-full flex items-center justify-center shadow-lg">
+            <HiExclamation className="w-12 h-12 text-white" />
+          </div>
+        );
+      default:
+        return null;
     }
-    return responseData;
-  },
+  };
 
-  async updateProducto(id: number, data: any): Promise<Producto> {
-    console.log("🔗 PATCH", `${API_URL}/productos/${id}`, data);
-    const response = await fetch(`${API_URL}/productos/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    const responseData = await response.json();
-    console.log("📥 Respuesta:", response.status, responseData);
-
-    if (!response.ok) {
-      throw new Error(
-        `Error al actualizar producto (${response.status}): ${JSON.stringify(
-          responseData
-        )}`
-      );
+  const getColors = () => {
+    switch (modal.type) {
+      case "success":
+        return {
+          border: "border-green-600",
+          title: "text-green-700",
+          button: "bg-green-600 hover:bg-green-700",
+        };
+      case "error":
+        return {
+          border: "border-red-600",
+          title: "text-red-700",
+          button: "bg-red-600 hover:bg-red-700",
+        };
+      case "confirm":
+        return {
+          border: "border-yellow-600",
+          title: "text-yellow-700",
+          button: "bg-yellow-600 hover:bg-yellow-700",
+        };
+      case "info":
+        return {
+          border: "border-blue-600",
+          title: "text-blue-700",
+          button: "bg-blue-600 hover:bg-blue-700",
+        };
+      default:
+        return {
+          border: "border-gray-600",
+          title: "text-gray-700",
+          button: "bg-gray-600 hover:bg-gray-700",
+        };
     }
-    return responseData;
-  },
+  };
 
-  async deleteProducto(id: number): Promise<void> {
-    console.log("🔗 DELETE", `${API_URL}/productos/${id}`);
-    const response = await fetch(`${API_URL}/productos/${id}`, {
-      method: "DELETE",
-    });
+  const colors = getColors();
 
-    console.log("📥 Respuesta DELETE:", response.status);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("❌ Error al eliminar:", errorText);
-      throw new Error(`Error al eliminar producto (${response.status})`);
-    }
-  },
-
-  async toggleEstado(id: number, activo: boolean): Promise<Producto> {
-    console.log("🔗 PATCH", `${API_URL}/productos/${id}/estado`, { activo });
-    const response = await fetch(`${API_URL}/productos/${id}/estado`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ activo }),
-    });
-
-    const responseData = await response.json();
-    console.log("📥 Respuesta toggle estado:", response.status, responseData);
-
-    if (!response.ok) {
-      throw new Error(
-        `Error al cambiar estado (${response.status}): ${JSON.stringify(
-          responseData
-        )}`
-      );
-    }
-    return responseData;
-  },
-
-  async getCategorias(): Promise<Categoria[]> {
-    const response = await fetch(`${API_URL}/categorias`);
-    if (!response.ok) throw new Error("Error al cargar categorías");
-    return response.json();
-  },
-
-  async getSubcategorias(): Promise<Subcategoria[]> {
-    const response = await fetch(`${API_URL}/subcategorias`);
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Error de subcategorías:", response.status, errorText);
-      throw new Error(`Error al cargar subcategorías (${response.status})`);
-    }
-    return response.json();
-  },
+  return (
+    <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50 p-4">
+      <div
+        className={`bg-gradient-to-br from-white to-slate-50 p-8 rounded-2xl shadow-2xl max-w-md w-full text-center border-4 ${colors.border}`}
+      >
+        <div className="mb-6 flex justify-center">{getIcon()}</div>
+        <h2 className={`text-3xl font-bold mb-4 ${colors.title}`}>
+          {modal.title}
+        </h2>
+        <p className="text-gray-700 mb-6 text-lg whitespace-pre-line">
+          {modal.message}
+        </p>
+        <div className="flex gap-3">
+          {modal.type === "confirm" && onConfirm ? (
+            <>
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 font-bold text-lg transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  onConfirm();
+                  onClose();
+                }}
+                className={`flex-1 px-4 py-3 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition transform hover:scale-105 ${colors.button}`}
+              >
+                Confirmar
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={onClose}
+              className={`w-full px-4 py-3 text-white rounded-lg font-bold text-lg shadow-lg hover:shadow-xl transition transform hover:scale-105 ${colors.button}`}
+            >
+              Aceptar
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export const Productos = () => {
-  // Estados existentes
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [subcategorias, setSubcategorias] = useState<Subcategoria[]>([]);
@@ -162,6 +193,12 @@ export const Productos = () => {
     subcategoria: "",
   });
   const [imagenPreview, setImagenPreview] = useState<string>("");
+  const [modal, setModal] = useState<ModalState>({
+    show: false,
+    type: null,
+    title: "",
+    message: "",
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [estadoFilter, setEstadoFilter] = useState("");
@@ -170,36 +207,59 @@ export const Productos = () => {
   const itemsPerPage = 5;
   const [imagenFile, setImagenFile] = useState<File | null>(null);
 
-  // 🆕 ESTADOS PARA EL MODAL DE TRADUCCIONES
   const [showTranslationModal, setShowTranslationModal] = useState(false);
   const [selectedProducto, setSelectedProducto] = useState<Producto | null>(
     null
   );
 
-  // ... (todo tu código de cargarDatos, handleAdd, handleEdit, etc. se mantiene igual)
+  // Funciones para modales
+  const showSuccessModal = (title: string, message: string) => {
+    setModal({ show: true, type: "success", title, message });
+  };
+  const showErrorModal = (title: string, message: string) => {
+    setModal({ show: true, type: "error", title, message });
+  };
+  const showConfirmModal = (
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ) => {
+    setModal({ show: true, type: "confirm", title, message, onConfirm });
+  };
+  const closeModal = () => {
+    setModal({ show: false, type: null, title: "", message: "" });
+  };
+
   useEffect(() => {
     cargarDatos();
   }, []);
 
+  // ⭐ REESCRITO CON AXIOS
   const cargarDatos = async () => {
     try {
       setLoading(true);
-      console.log("🔍 Intentando conectar a:", API_URL);
+      console.log("🔄 Cargando productos del administrador...");
 
-      const productosData = await api.getProductos();
-      const categoriasData = await api.getCategorias();
+      // Usar axios configurado
+      const [productosRes, categoriasRes] = await Promise.all([
+        api.get<Producto[]>("/productos"),
+        api.get<Categoria[]>("/categorias"),
+      ]);
 
-      console.log("✅ Productos cargados:", productosData);
-      console.log("✅ Categorías cargadas:", categoriasData);
+      console.log("✅ Productos cargados:", productosRes.data);
+      console.log("✅ Categorías cargadas:", categoriasRes.data);
 
       let subcategoriasData: Subcategoria[] = [];
       try {
-        subcategoriasData = await api.getSubcategorias();
+        const subcategoriasRes = await api.get<Subcategoria[]>(
+          "/subcategorias"
+        );
+        subcategoriasData = subcategoriasRes.data;
         console.log("✅ Subcategorías cargadas:", subcategoriasData);
       } catch (subError) {
-        console.warn("⚠️ No se pudieron cargar subcategorías del endpoint");
+        console.warn("⚠️ Extrayendo subcategorías de productos...");
         const subcatsMap = new Map<number, Subcategoria>();
-        productosData.forEach((p) => {
+        productosRes.data.forEach((p) => {
           if (p.subcategoria && p.subcategoria.id) {
             subcatsMap.set(p.subcategoria.id, p.subcategoria);
           }
@@ -208,30 +268,39 @@ export const Productos = () => {
       }
 
       setProductos(
-        productosData.map((p) => ({
+        productosRes.data.map((p) => ({
           ...p,
           precio: Number(p.precio),
           disponibilidad: Number(p.disponibilidad || 0),
         }))
       );
-      setCategorias(categoriasData.filter((c) => c.activo));
+      setCategorias(categoriasRes.data.filter((c) => c.activo));
       setSubcategorias(subcategoriasData.filter((s) => s.activo));
     } catch (error: any) {
-      console.error("❌ Error:", error);
-      alert("Error al cargar los datos");
+      console.error("❌ Error al cargar datos:", error);
+      const mensaje =
+        error.response?.data?.message || error.message || "Error desconocido";
+      showErrorModal(
+        "Error de Conexión",
+        `No se pudieron cargar los datos.\n\n${mensaje}`
+      );
     } finally {
       setLoading(false);
     }
   };
 
+  // ⭐ REESCRITO CON AXIOS
   const handleToggleEstado = async (id: number, nuevoEstado: boolean) => {
     try {
-      await api.toggleEstado(id, nuevoEstado);
+      await api.patch(`/productos/${id}/estado`, { activo: nuevoEstado });
       await cargarDatos();
-      alert(`Producto ${nuevoEstado ? "activado" : "desactivado"}`);
+      showSuccessModal(
+        "Estado Actualizado",
+        `Producto ${nuevoEstado ? "activado" : "desactivado"} correctamente`
+      );
     } catch (error) {
-      console.error("Error:", error);
-      alert("Error al cambiar el estado");
+      console.error("❌ Error al cambiar estado:", error);
+      showErrorModal("Error", "No se pudo cambiar el estado del producto.");
     }
   };
 
@@ -263,32 +332,46 @@ export const Productos = () => {
     setShowModal(true);
   };
 
+  // ⭐ REESCRITO CON AXIOS
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Desactivar este producto?")) return;
-    try {
-      await api.deleteProducto(id);
-      await cargarDatos();
-      alert("Producto desactivado");
-    } catch (error) {
-      alert("Error al eliminar");
-    }
+    showConfirmModal(
+      "Confirmar Desactivación",
+      "¿Estás seguro de que deseas desactivar este producto?",
+      async () => {
+        try {
+          await api.delete(`/productos/${id}`);
+          await cargarDatos();
+          showSuccessModal(
+            "Producto Desactivado",
+            "El producto ha sido desactivado correctamente"
+          );
+        } catch (error) {
+          console.error("❌ Error al eliminar:", error);
+          showErrorModal(
+            "Error al Eliminar",
+            "No se pudo eliminar el producto."
+          );
+        }
+      }
+    );
   };
 
   const handleImagenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      alert("Selecciona una imagen válida");
+      showErrorModal("Archivo Inválido", "Selecciona una imagen válida");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      alert("Máximo 5MB");
+      showErrorModal("Archivo Muy Grande", "La imagen no debe superar los 5MB");
       return;
     }
     setImagenFile(file);
     setImagenPreview(URL.createObjectURL(file));
   };
 
+  // ⭐ REESCRITO CON AXIOS (pero FormData se sigue usando)
   const handleSave = async () => {
     if (
       !form.nombre ||
@@ -296,7 +379,10 @@ export const Productos = () => {
       !form.disponibilidad ||
       !form.subcategoria
     ) {
-      alert("Completa todos los campos");
+      showErrorModal(
+        "Campos Incompletos",
+        "Completa todos los campos obligatorios"
+      );
       return;
     }
 
@@ -306,49 +392,54 @@ export const Productos = () => {
     formData.append("precio", form.precio);
     formData.append("disponibilidad", form.disponibilidad);
     formData.append("subcategoria", form.subcategoria);
-
-    if (imagenFile) {
-      formData.append("imagen", imagenFile);
-    }
+    if (imagenFile) formData.append("imagen", imagenFile);
 
     try {
-      const url = editingId
-        ? `${API_URL}/productos/${editingId}`
-        : `${API_URL}/productos/upload`;
-      const method = editingId ? "PATCH" : "POST";
+      if (editingId) {
+        // Actualizar con PATCH y FormData
+        await api.patch(`/productos/${editingId}`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        // Crear con POST y FormData
+        await api.post("/productos/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
 
-      const response = await fetch(url, { method, body: formData });
-      const data = await response.json();
-
-      if (!response.ok) throw new Error("Error");
-
-      alert(editingId ? "Actualizado" : "Creado");
       await cargarDatos();
+      showSuccessModal(
+        editingId ? "Producto Actualizado" : "Producto Creado",
+        editingId
+          ? "El producto ha sido actualizado correctamente"
+          : "El producto ha sido creado exitosamente"
+      );
       setShowModal(false);
       setImagenFile(null);
       setImagenPreview("");
-    } catch (err) {
-      alert("Error al guardar");
+    } catch (error: any) {
+      console.error("❌ Error al guardar:", error);
+      const mensaje = error.response?.data?.message || "Error desconocido";
+      showErrorModal(
+        "Error al Guardar",
+        `No se pudo guardar el producto.\n\n${mensaje}`
+      );
     }
   };
 
-  // 🆕 FUNCIÓN PARA ABRIR MODAL DE TRADUCCIONES
   const handleTranslate = (producto: Producto) => {
     setSelectedProducto(producto);
     setShowTranslationModal(true);
   };
 
-  // 🆕 FUNCIÓN PARA CERRAR MODAL DE TRADUCCIONES
   const handleCloseTranslationModal = () => {
     setShowTranslationModal(false);
     setSelectedProducto(null);
   };
 
-  // 🆕 FUNCIÓN CUANDO SE GUARDAN TRADUCCIONES
   const handleSaveTranslations = () => {
-    console.log("✅ Traducciones guardadas, recargando datos...");
-    // Opcional: recargar productos para ver cambios
-    // cargarDatos();
+    console.log("✅ Traducciones guardadas");
+    cargarDatos(); // Recargar para ver cambios
   };
 
   const productosFiltrados = productos.filter((producto) => {
@@ -395,7 +486,7 @@ export const Productos = () => {
       return imagen;
     }
     const filename = imagen.replace(/^\/uploads\/productos\//, "");
-    return `${API_URL}/uploads/productos/${filename}`;
+    return `${API_BASE_URL}/uploads/productos/${filename}`;
   };
 
   if (loading) {
@@ -411,6 +502,13 @@ export const Productos = () => {
 
   return (
     <div className="p-6">
+      {/* 🆕 Modal Personalizado */}
+      <CustomModal
+        modal={modal}
+        onClose={closeModal}
+        onConfirm={modal.onConfirm}
+      />
+
       <div className="mb-6 flex justify-between items-center">
         <h2 className="text-2xl font-bold text-slate-800">
           Inventario de Restaurante
@@ -474,6 +572,7 @@ export const Productos = () => {
               ))}
             </select>
 
+            {/* Filtro por estado */}
             <select
               value={estadoFilter}
               onChange={(e) => handleEstadoChange(e.target.value)}

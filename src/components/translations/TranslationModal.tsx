@@ -358,5 +358,3 @@ export const TranslationModal = ({
     </div>
   );
 };
-
-export default TranslationModal;
