@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from "react-i18next";
 
 // Interfaces basadas en tu backend
 interface Categoria {
@@ -34,7 +34,7 @@ interface CartItem extends Producto {
 
 type Quantities = Record<number, number>;
 
-const API_URL = "http://localhost:3000";
+const API_URL = "http://192.168.0.8:3000";
 
 const api = {
   async getCategorias(): Promise<Categoria[]> {
@@ -49,21 +49,53 @@ const api = {
     return response.json();
   },
 
-  async getSubcategorias(): Promise<Subcategoria[]> {
-    const response = await fetch(`${API_URL}/subcategorias`);
-    if (!response.ok) throw new Error("Error al cargar subcategorías");
+  async crearPedido(pedidoData: any): Promise<any> {
+    const response = await fetch(`${API_URL}/pedidos`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(pedidoData),
+    });
+    if (!response.ok) throw new Error("Error al crear el pedido");
     return response.json();
   },
 };
 
 const MenuCompleto = () => {
   const { t } = useTranslation();
-  
+
   const [cart, setCart] = useState<CartItem[]>([]);
   const [quantities, setQuantities] = useState<Quantities>({});
   const [showModal, setShowModal] = useState<boolean>(false);
   const [showQR, setShowQR] = useState<boolean>(false);
+  const [showConfirmacion, setShowConfirmacion] = useState<boolean>(false);
+  const [pedidoCreado, setPedidoCreado] = useState<any>(null);
   const [animatingItems, setAnimatingItems] = useState<number[]>([]);
+  const [creandoPedido, setCreandoPedido] = useState<boolean>(false);
+
+  // Obtener el usuario logueado desde localStorage
+  const getUsuarioId = (): number => {
+    const usuarioStr = localStorage.getItem("usuarioActual");
+    if (usuarioStr) {
+      try {
+        const usuario = JSON.parse(usuarioStr);
+        console.log("Usuario logueado:", usuario);
+        return usuario.id;
+      } catch (error) {
+        console.error("Error al parsear usuario:", error);
+        // Redirigir al login si hay error
+        window.location.href = "/login";
+        return 1;
+      }
+    }
+    // Si no hay usuario logueado, redirigir al login
+    console.warn("No hay usuario logueado, redirigiendo al login...");
+    window.location.href = "/login";
+    return 1;
+  };
+
+  const [usuarioId] = useState<number>(getUsuarioId());
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -75,15 +107,10 @@ const MenuCompleto = () => {
     const cargarDatos = async () => {
       try {
         setLoading(true);
-        console.log("Intentando conectar a:", API_URL);
-
         const [categoriasData, productosData] = await Promise.all([
           api.getCategorias(),
           api.getProductosActivos(),
         ]);
-
-        console.log("Categorías cargadas:", categoriasData);
-        console.log("Productos activos cargados:", productosData);
 
         const categoriasActivas = categoriasData.filter((c) => c.activo);
         setCategorias(categoriasActivas);
@@ -95,8 +122,7 @@ const MenuCompleto = () => {
 
         setError("");
       } catch (err: any) {
-        console.error("Error detallado:", err);
-        setError(t('loadError') + ' ' + err.message);
+        setError(t("loadError") + " " + err.message);
       } finally {
         setLoading(false);
       }
@@ -117,12 +143,34 @@ const MenuCompleto = () => {
 
   const updateQuantity = (productId: number, newQuantity: number): void => {
     if (newQuantity >= 1) {
+      // Buscar el producto para validar contra el stock
+      const producto = productos.find((p) => p.id === productId);
+      if (
+        producto &&
+        producto.disponibilidad &&
+        newQuantity > producto.disponibilidad
+      ) {
+        alert(`Solo hay ${producto.disponibilidad} unidades disponibles`);
+        return;
+      }
       setQuantities({ ...quantities, [productId]: newQuantity });
     }
   };
 
   const addToCart = (product: Producto): void => {
     const quantity = getQuantity(product.id);
+    const existingItem = cart.find((item) => item.id === product.id);
+    const cantidadActualEnCarrito = existingItem ? existingItem.quantity : 0;
+    const cantidadTotal = cantidadActualEnCarrito + quantity;
+
+    // Validar stock disponible
+    if (product.disponibilidad && cantidadTotal > product.disponibilidad) {
+      alert(
+        `Solo hay ${product.disponibilidad} unidades disponibles de ${product.nombre}. Ya tienes ${cantidadActualEnCarrito} en el carrito.`
+      );
+      return;
+    }
+
     const existingIndex = cart.findIndex((item) => item.id === product.id);
 
     if (existingIndex >= 0) {
@@ -153,6 +201,20 @@ const MenuCompleto = () => {
       removeFromCart(productId);
       return;
     }
+
+    // Buscar el producto original para validar stock
+    const producto = productos.find((p) => p.id === productId);
+    if (
+      producto &&
+      producto.disponibilidad &&
+      newQuantity > producto.disponibilidad
+    ) {
+      alert(
+        `Solo hay ${producto.disponibilidad} unidades disponibles de ${producto.nombre}`
+      );
+      return;
+    }
+
     setCart(
       cart.map((item) =>
         item.id === productId ? { ...item, quantity: newQuantity } : item
@@ -170,6 +232,40 @@ const MenuCompleto = () => {
       .toFixed(2);
   };
 
+  const confirmarPago = async () => {
+    try {
+      setCreandoPedido(true);
+
+      // Preparar los datos del pedido según tu DTO
+      const pedidoData = {
+        usuarioId: usuarioId,
+        metodoPago: "QR", // o "EFECTIVO"
+        tipoEntrega: "LLEVAR", // o "PARA_AQUI"
+        notas: "", // Puedes agregar un campo de texto para esto
+        detalles: cart.map((item) => ({
+          productoId: item.id,
+          cantidad: item.quantity,
+        })),
+      };
+
+      console.log("Enviando pedido:", pedidoData);
+      const response = await api.crearPedido(pedidoData);
+      console.log("Pedido creado:", response);
+
+      setPedidoCreado(response.datos);
+      setShowQR(false);
+      setShowConfirmacion(true);
+
+      // Limpiar el carrito
+      setCart([]);
+    } catch (err: any) {
+      console.error("Error al crear pedido:", err);
+      alert("Error al crear el pedido: " + err.message);
+    } finally {
+      setCreandoPedido(false);
+    }
+  };
+
   const getImageUrl = (imagen: string | null): string => {
     if (!imagen) {
       return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&h=500&fit=crop";
@@ -183,9 +279,6 @@ const MenuCompleto = () => {
     return `${API_URL}/uploads/productos/${filename}`;
   };
 
-  const categoriaSeleccionada = categorias.find(
-    (c) => c.id === categoriaActiva
-  );
   const accentColor = "#d88c6f";
   const bgGradient = "linear-gradient(135deg, #dbbdb1 0%, #f0e5de 100%)";
 
@@ -197,9 +290,7 @@ const MenuCompleto = () => {
       >
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-800 mx-auto mb-4"></div>
-          <p className="text-gray-700 text-lg font-semibold">
-            {t('loading')}
-          </p>
+          <p className="text-gray-700 text-lg font-semibold">{t("loading")}</p>
         </div>
       </div>
     );
@@ -227,7 +318,7 @@ const MenuCompleto = () => {
               />
             </svg>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              {t('errorTitle')}
+              {t("errorTitle")}
             </h2>
             <p className="text-gray-600 mb-4">{error}</p>
             <button
@@ -235,7 +326,7 @@ const MenuCompleto = () => {
               className="px-6 py-3 rounded-xl font-semibold text-white"
               style={{ background: accentColor }}
             >
-              {t('retry')}
+              {t("retry")}
             </button>
           </div>
         </div>
@@ -249,11 +340,9 @@ const MenuCompleto = () => {
         <div className="bg-white rounded-3xl shadow-xl p-8 mb-10">
           <div className="mb-6">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
-              {t('menu')}
+              {t("menu")}
             </h1>
-            <p className="text-gray-600">
-              {t('menuDescription')}
-            </p>
+            <p className="text-gray-600">{t("menuDescription")}</p>
           </div>
 
           <div className="flex gap-4 flex-wrap">
@@ -288,9 +377,7 @@ const MenuCompleto = () => {
               <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
               <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
             </svg>
-            <p className="text-gray-500 text-lg">
-              {t('noProducts')}
-            </p>
+            <p className="text-gray-500 text-lg">{t("noProducts")}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -319,9 +406,28 @@ const MenuCompleto = () => {
                   <h3 className="text-2xl font-bold text-gray-800 mb-2">
                     {producto.nombre}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-5 leading-relaxed">
-                    {producto.descripcion || t('deliciousProduct')}
+                  <p className="text-gray-600 text-sm mb-3 leading-relaxed">
+                    {producto.descripcion || t("deliciousProduct")}
                   </p>
+
+                  {/* Indicador de stock */}
+                  {producto.disponibilidad !== undefined && (
+                    <div className="mb-3">
+                      {producto.disponibilidad > 10 ? (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+                          ✓ Disponible ({producto.disponibilidad} unidades)
+                        </span>
+                      ) : producto.disponibilidad > 0 ? (
+                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-semibold">
+                          ⚠ Últimas {producto.disponibilidad} unidades
+                        </span>
+                      ) : (
+                        <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-semibold">
+                          ✕ Agotado
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-center mb-5">
                     <span
@@ -366,8 +472,16 @@ const MenuCompleto = () => {
 
                   <button
                     onClick={() => addToCart(producto)}
-                    className="w-full text-white py-3.5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-lg"
-                    style={{ background: accentColor }}
+                    disabled={
+                      !producto.disponibilidad || producto.disponibilidad === 0
+                    }
+                    className="w-full text-white py-3.5 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-lg disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    style={{
+                      background:
+                        producto.disponibilidad && producto.disponibilidad > 0
+                          ? accentColor
+                          : undefined,
+                    }}
                   >
                     <svg
                       className="w-5 h-5 stroke-white fill-none"
@@ -377,7 +491,9 @@ const MenuCompleto = () => {
                       <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
                       <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
                     </svg>
-                    {t('addToCart')}
+                    {producto.disponibilidad && producto.disponibilidad > 0
+                      ? t("addToCart")
+                      : "Agotado"}
                   </button>
                 </div>
               </div>
@@ -430,7 +546,9 @@ const MenuCompleto = () => {
                 className="p-6 border-b border-gray-200 flex justify-between items-center"
                 style={{ background: "#dbbdb1" }}
               >
-                <h2 className="text-2xl font-bold text-gray-800">{t('yourCart')}</h2>
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {t("yourCart")}
+                </h2>
                 <button
                   onClick={() => setShowModal(false)}
                   className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:bg-gray-100 transition-colors"
@@ -450,9 +568,7 @@ const MenuCompleto = () => {
                       <path d="M9 2L7 6H2v15h20V6h-5L15 2H9z" />
                       <path d="M9 6v0c0 1.7 1.3 3 3 3s3-1.3 3-3v0" />
                     </svg>
-                    <p className="text-gray-500 text-lg">
-                      {t('emptyCart')}
-                    </p>
+                    <p className="text-gray-500 text-lg">{t("emptyCart")}</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -510,7 +626,7 @@ const MenuCompleto = () => {
                             onClick={() => removeFromCart(item.id)}
                             className="text-red-500 hover:text-red-700 font-bold text-sm"
                           >
-                            {t('remove')}
+                            {t("remove")}
                           </button>
                           <p
                             className="font-bold text-lg"
@@ -533,7 +649,7 @@ const MenuCompleto = () => {
                 >
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-xl font-bold text-gray-800">
-                      {t('total')}:
+                      {t("total")}:
                     </span>
                     <span
                       className="text-3xl font-bold"
@@ -547,7 +663,7 @@ const MenuCompleto = () => {
                     className="w-full text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:shadow-lg"
                     style={{ background: accentColor }}
                   >
-                    {t('proceedPayment')}
+                    {t("proceedPayment")}
                   </button>
                 </div>
               )}
@@ -571,7 +687,7 @@ const MenuCompleto = () => {
                 style={{ background: "#dbbdb1" }}
               >
                 <h2 className="text-2xl font-bold text-gray-800">
-                  {t('scanToPay')}
+                  Escanea para pagar
                 </h2>
                 <button
                   onClick={() => setShowQR(false)}
@@ -583,24 +699,102 @@ const MenuCompleto = () => {
 
               <div className="p-8 text-center">
                 <div className="bg-white p-4 rounded-2xl shadow-inner mb-6 inline-block">
-                  <img
-                    src="/qr.jpeg"
-                    alt={t('qrCode')}
-                    className="w-64 h-64"
-                  />
+                  <img src="/qr.jpeg" alt="Código QR" className="w-64 h-64" />
                 </div>
 
-                <p className="text-gray-600 mb-2">{t('totalToPay')}:</p>
+                <p className="text-gray-600 mb-2">Total a pagar:</p>
                 <p
-                  className="text-4xl font-bold mb-4"
+                  className="text-4xl font-bold mb-6"
                   style={{ color: accentColor }}
                 >
                   Bs {getTotalPrice()}
                 </p>
 
-                <p className="text-sm text-gray-500">
-                  {t('scanWithApp')}
+                <p className="text-sm text-gray-500 mb-6">
+                  Escanea el código QR con tu app de banco
                 </p>
+
+                <button
+                  onClick={confirmarPago}
+                  disabled={creandoPedido}
+                  className="w-full text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ background: accentColor }}
+                >
+                  {creandoPedido
+                    ? "Procesando..."
+                    : "Ya pagué - Confirmar pedido"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Modal de confirmación */}
+        {showConfirmacion && pedidoCreado && (
+          <div
+            className="fixed inset-0 flex items-center justify-center p-4 z-50"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.3)" }}
+          >
+            <div
+              className="bg-white rounded-3xl max-w-md w-full overflow-hidden shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="p-6 border-b border-gray-200"
+                style={{ background: "#dbbdb1" }}
+              >
+                <h2 className="text-2xl font-bold text-gray-800 text-center">
+                  ¡Pedido Confirmado!
+                </h2>
+              </div>
+
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg
+                    className="w-12 h-12 text-green-500"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </div>
+
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                  Tu pedido ha sido registrado
+                </h3>
+                <p className="text-gray-600 mb-4">Número de pedido:</p>
+                <p
+                  className="text-3xl font-bold mb-6"
+                  style={{ color: accentColor }}
+                >
+                  {pedidoCreado.numeroPedido}
+                </p>
+
+                <div className="bg-gray-50 rounded-xl p-4 mb-6 text-left">
+                  <h4 className="font-bold text-gray-800 mb-2">Resumen:</h4>
+                  <div className="space-y-1 text-sm text-gray-600">
+                    <p>Total: Bs {Number(pedidoCreado.total).toFixed(2)}</p>
+                    <p>Estado: {pedidoCreado.estado}</p>
+                    <p>Método de pago: {pedidoCreado.metodoPago}</p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowConfirmacion(false);
+                    setShowModal(false);
+                  }}
+                  className="w-full text-white py-4 rounded-xl font-bold text-lg transition-all duration-300 hover:shadow-lg"
+                  style={{ background: accentColor }}
+                >
+                  Continuar
+                </button>
               </div>
             </div>
           </div>

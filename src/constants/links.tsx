@@ -1,7 +1,12 @@
 export const navbarLinks = [
   {
     id: 1,
-    title: "",
+    title: "Inicio",
+    href: "/",
+  },
+  {
+    id: 2,
+    title: "Productos",
     href: "/articulos",
   },
 ];
